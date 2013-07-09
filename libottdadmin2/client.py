@@ -45,17 +45,14 @@ class AdminConnection(socket.socket, LoggableObject):
 
     def __init_handlers__(self):
         self.connected += self.on_connect
-        self.disconnected += self.on_disconnect
 
     def __init__(self, password = None, retries = None, version = None, name = None):
         super(AdminConnection, self).__init__()
-        self._retries    = retries or RETRIES
         self._version    = version or VERSIONSTRING
         self._name       = name    or NAME
         self._password   = password
 
-        self._connected  = True
-        self._must_retry = True
+        self._connected  = False
 
         self._last_host  = None
         self._last_port  = 3977
@@ -91,12 +88,7 @@ class AdminConnection(socket.socket, LoggableObject):
     def disconnect(self):
         self.log.info("Disconnecting")
         self.send_packet(AdminQuit)
-        self._must_retry = False
-        self.force_disconnect()
-
-    def on_disconnect(self):
-        if self._must_retry:
-            pass
+        self.force_disconnect(can_retry = False)
 
     def on_connect(self):
         self.authenticate()
@@ -109,27 +101,27 @@ class AdminConnection(socket.socket, LoggableObject):
             self.log.debug("Data: '%r'", kwargs)
             return self.sendall(packetType(**kwargs))
         except socket.error as e:
-            return self.force_disconnect(e)
+            return self.force_disconnect(can_retry = True, error = e)
 
-    def force_disconnect(self, e = None):
+    def force_disconnect(self, can_retry = True, error = None):
         self.log.info("Forced disconnecting")
-        if e:
-            self._last_error = e
+        if error:
+            self._last_error = error
         self._connected = False
         try:
             self.close()
         except socket.error:
             pass
-        self.disconnected()
+        self.disconnected(can_retry)
 
     def recv_packet(self):
         plen = self.recv(self.format_packetlen.size)
-        if plen is None:
-            return self.force_disconnect()
+        if plen is None or len(plen) < self.format_packetlen.size:
+            return self.force_disconnect(can_retry = True)
         plen = self.format_packetlen.unpack_from(plen)[0]
         data = self.recv(plen - self.format_packetlen.size)
-        if data is None:
-            return self.force_disconnect()
+        if data is None or len(data) < (plen - self.format_packetlen.size):
+            return self.force_disconnect(can_retry = True)
         packetID = self.format_packetid.unpack_from(data)[0]
         data = data[self.format_packetid.size:]
         try:
@@ -141,7 +133,7 @@ class AdminConnection(socket.socket, LoggableObject):
             return (packet, data)
         except PacketNotFound as e:
             self.log.warning("Could not find packet with id %d", packetID)
-            return self.force_disconnect(e)
+            return self.force_disconnect(can_retry = True, error=e)
         return None
 
     def authenticate(self, password = None, name = None, version = None):
