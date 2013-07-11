@@ -6,7 +6,7 @@ setup(
     author="Steven 'Xaroth' Noorbergen",
     author_email='xaroth@opendune.org',
     packages=['libottdadmin2'],
-    scripts=['bin/openttd-admin-rcon'],
+    scripts=['bin/openttd-admin-rcon', 'bin/openttd-admin-test-json.py'],
     url='https://github.com/xaroth/libottdadmin2',
     license='http://creativecommons.org/licenses/by-nc-sa/3.0/',
     description='A small library for the Admin Port interface for OpenTTD.',
