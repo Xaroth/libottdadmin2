@@ -41,6 +41,12 @@ class PacketRegistry(LoggableObject):
     def __iter__(self):
         return self._packets.itervalues()
 
+    def get_by_name(self, name):
+        for item in self._packets.values(): 
+            if item.__class__.__name__ == name:
+                return item
+        return None
+
     def __getitem__(self, id):
         if not isinstance(id, (int, long)):
             if hasattr(id, 'packetID'):
