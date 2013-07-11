@@ -2,7 +2,11 @@
 
 from optparse import OptionParser
 import socket
-from libottdadmin2.client import AdminConnection, AdminRcon
+from libottdadmin2.adminconnection import AdminConnection, AdminRcon, ServerRcon
+from libottdadmin2.packets.base import unpack_str
+
+import logging
+logging.basicConfig(level=logging.CRITICAL)
 
 usage = "usage: %prog -p password [options] \"command1\" [\"command2\"] [...]"
 
@@ -32,9 +36,10 @@ if __name__ == "__main__":
     if options.verbose:
         print("Connecting to %(host)s:%(port)s" % {'host': options.host, 'port': options.port})
 
-    connection = AdminConnection(password=options.password)
-    connection.settimeout(0.2)
-    connection.connect(options.host, options.port)
+    connection = AdminConnection()
+    connection.settimeout(0.4)
+    connection.configure(password=options.password, host=options.host, port=options.port)
+    connection.connect()
     failed = False
     try:
         protocol_response = connection.recv_packet()
@@ -56,7 +61,19 @@ if __name__ == "__main__":
                 try:
                     response = connection.recv_packet()
                     if response and (options.verbose or options.output_only):
-                        print(">>> %s" % response[1]['result'])
+                        if response[0] == ServerRcon:
+                            print(">>> %s" % response[1]['result'])
+                        elif isinstance(response[0], (int, long)):
+                            try:
+                                # Do a crude check for a SERVER_RCON_END packet
+                                # Since it's not in live yet, we don't support it
+                                # but we know what it is.
+                                cmd_check = unpack_str(response[1])
+                                if cmd_check == command:
+                                    print("<<< END OF COMMAND >>>")
+                                    break
+                            except:
+                                continue
                 except socket.error:
                     break
 
