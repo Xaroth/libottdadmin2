@@ -1,0 +1,20 @@
+{
+    "imports": [
+
+    ],
+    "formatters": {
+        "ServerRcon": "Colour: %(colour)d :: Result: '%(result)s'"
+    },
+    "packets": [
+        {
+            "id": "AdminRcon",
+            "data": {"command": "echo 1"},
+            "poll": [0.2, 0.1]
+        },
+        {
+            "id": "AdminQuit",
+            "data": {},
+            "poll": []
+        }
+    ]
+}
