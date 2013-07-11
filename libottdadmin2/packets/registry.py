@@ -1,4 +1,4 @@
-from libottdadmin2.util import LoggableObject
+from ..util import LoggableObject
 
 class InvalidPacketItem(Exception):
     pass

@@ -1,6 +1,6 @@
-from libottdadmin2.packets.registry import receive
-from libottdadmin2.packets.base import ReceivingPacket, Struct
-from libottdadmin2.util import gamedate_to_datetime
+from .registry import receive
+from .base import ReceivingPacket, Struct
+from ..util import gamedate_to_datetime
 
 @receive.packet
 class ServerFull(ReceivingPacket):

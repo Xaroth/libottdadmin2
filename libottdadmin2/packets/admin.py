@@ -1,6 +1,6 @@
-from libottdadmin2.packets.registry import send
-from libottdadmin2.packets.base import SendingPacket, Struct
-from libottdadmin2.util import datetime_to_gamedate
+from .registry import send
+from .base import SendingPacket, Struct
+from ..util import datetime_to_gamedate
 
 @send.packet
 class AdminJoin(SendingPacket):
