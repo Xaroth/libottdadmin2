@@ -13,7 +13,9 @@ from .server import ServerFull, ServerBanned, ServerError, ServerProtocol, \
                     ServerClientQuit, ServerClientError, ServerCompanyNew, \
                     ServerCompanyInfo, ServerCompanyUpdate, \
                     ServerCompanyRemove, ServerCompanyEconomy, \
-                    ServerCompanyStats, ServerChat, ServerRcon, ServerConsole
+                    ServerCompanyStats, ServerChat, ServerRcon, \
+                    ServerConsole, ServerCmdNames, ServerCmdLogging, \
+                    ServerGamescript, ServerRconEnd, ServerPong
 
 from .admin import AdminJoin, AdminQuit, AdminUpdateFrequency, AdminPoll, \
-                   AdminChat, AdminRcon
+                   AdminChat, AdminRcon, AdminGamescript, AdminPing
