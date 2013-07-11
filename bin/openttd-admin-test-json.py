@@ -38,7 +38,7 @@ parser.add_option("-q", "--quiet", dest="verbose", action="store_false",
 #parser.add_option("-Q", "--output-only", dest="output_only", action="store_true", 
 #                  help="Output responses only (use in combination with -q)", default=False)
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
-                  help="be verbose (default)", default=True)
+                  help="be verbose (default)", default=False)
 
 if __name__ == "__main__":
     options, args = parser.parse_args()
@@ -91,8 +91,10 @@ if __name__ == "__main__":
             pid = packet.packetID
             pname = packet.__class__.__name__
         format = formatters[pid]
-        print("Received packet with ID: %d (%s)" % (pid, pname))
-        print(format % data)
+        print("<<< Received packet with ID: %d (%s)" % (pid, pname))
+        output = format % data
+        if output:
+            print "<<< %s" % output
 
     def formatter_send(packet, origin, **data):
         pid = packet
@@ -101,8 +103,10 @@ if __name__ == "__main__":
             pid = packet.packetID
             pname = packet.__class__.__name__
         format = formatters[pid]
-        print("Sending packet with ID: %d (%s)" % (pid, pname))
-        print(format % data)
+        print(">>> Sending packet with ID: %d (%s)" % (pid, pname))
+        output = format % data
+        if output:
+            print ">>> %s" % output
 
     if options.verbose:
         print("Loading packetlist")

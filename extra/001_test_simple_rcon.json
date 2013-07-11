@@ -4,8 +4,15 @@
     ],
     "formatters": {
         "receive": {
-            "ServerRcon": "Colour: %(colour)d :: Result: '%(result)s'"
-        }        
+            "ServerRcon": "RCON> '%(result)s' (colour: %(colour)d)",
+            "ServerWelcome": "'%(name)s' version '%(version)s' , Map '%(map_name)s' (%(x)d * %(y)d) started at %(startyear)s. Dedicated: %(dedicated)r",
+            "ServerProtocol": "Running Admin Protocol version '%(version)d' . Settings: %(settings)r"
+        },
+        "send": {
+            "AdminQuit": "",
+            "AdminJoin": "Name: %(name)s , Version: %(version)s , Password: ********",
+            "AdminRcon": "RCON> %(command)s"
+        }
     },
     "packets": [
         {
