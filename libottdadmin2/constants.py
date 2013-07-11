@@ -1,4 +1,10 @@
 #
+# This file is part of libottdadmin2
+#
+# License: http://creativecommons.org/licenses/by-nc-sa/3.0/
+#
+
+#
 # constant names and values taken from openttd @ src/network/core/config.h
 #
 
