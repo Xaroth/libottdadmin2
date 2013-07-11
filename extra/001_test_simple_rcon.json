@@ -3,7 +3,9 @@
 
     ],
     "formatters": {
-        "ServerRcon": "Colour: %(colour)d :: Result: '%(result)s'"
+        "receive": {
+            "ServerRcon": "Colour: %(colour)d :: Result: '%(result)s'"
+        }        
     },
     "packets": [
         {
