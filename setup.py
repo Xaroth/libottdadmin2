@@ -1,4 +1,9 @@
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
+
 
 setup(
     name='libottdadmin2',
@@ -11,6 +16,16 @@ setup(
     license='http://creativecommons.org/licenses/by-nc-sa/3.0/',
     description='A small library for the Admin Port interface for OpenTTD.',
     long_description=open('README.md').read(),
-    install_requires=[
-    ],
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: Common Public License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: Software Development :: Libraries',
+        'Topic :: Utilities',
+    ]
 )
