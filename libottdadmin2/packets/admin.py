@@ -7,7 +7,10 @@
 from .registry import send
 from .base import SendingPacket, Struct, ValidationError
 
-from ..constants import NETWORK_GAMESCRIPT_JSON_LENGTH
+from ..constants import NETWORK_GAMESCRIPT_JSON_LENGTH, \
+                        NETWORK_RCONCOMMAND_LENGTH, \
+                        NETWORK_CHAT_LENGTH, NETWORK_PASSWORD_LENGTH, \
+                        NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH
 from ..util import datetime_to_gamedate
 
 try:
@@ -20,9 +23,17 @@ class AdminJoin(SendingPacket):
     packetID = 0
 
     def encode(self, password, name, version):
+        if not isinstance(password, basestring):
+            raise ValidationError("Password is not a string")
+        if not isinstance(name, basestring):
+            raise ValidationError("Name is not a string")
+        if not isinstance(version, basestring):
+            raise ValidationError("Version is not a string")
+        if len(password) >= NETWORK_PASSWORD_LENGTH:
+            raise ValidationError("Password can not exceed %d characters in length (%d)" % (NETWORK_PASSWORD_LENGTH, len(password)))
         yield self.pack_str(password)
-        yield self.pack_str(name)
-        yield self.pack_str(version)
+        yield self.pack_str(name[:NETWORK_CLIENT_NAME_LENGTH])
+        yield self.pack_str(version[:NETWORK_REVISION_LENGTH])
 
 @send.packet
 class AdminQuit(SendingPacket):
@@ -50,6 +61,10 @@ class AdminChat(SendingPacket):
     format = Struct.create("BBI")
 
     def encode(self, action, destType, clientID, message):
+        if not isinstance(message, basestring):
+            raise ValidationError("Message is not a string")
+        if len(message) > NETWORK_CHAT_LENGTH:
+            raise ValidationError("Message can not exceed %d characters in length (%d)" % (NETWORK_CHAT_LENGTH, len(message)))
         yield self.pack(self.format, action, destType, clientID)
         yield self.pack_str(message)
 
@@ -58,6 +73,10 @@ class AdminRcon(SendingPacket):
     packetID = 5
 
     def encode(self, command):
+        if not isinstance(command, basestring):
+            raise ValidationError("Command is not a string")
+        if len(command) >= NETWORK_RCONCOMMAND_LENGTH:
+            raise ValidationError("Rcon commands can not exceed %d characters in length (%d)" % (NETWORK_RCONCOMMAND_LENGTH, len(command)))
         yield self.pack_str(command)
 
 @send.packet
@@ -78,8 +97,4 @@ class AdminPing(SendingPacket):
     format = Struct.create("I")
 
     def encode(self, payload):
-        if not isinstance(payload, (int, long)):
-            raise ValidationError("Please specify a uint32 value as payload")
-        if payload > 0xFFFF:
-            raise ValidationError("Please specify a uint32 value as payload (%d > %d)" % (payload, 0xFFFF))
         yield self.pack(self.format, payload)
