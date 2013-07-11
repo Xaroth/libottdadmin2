@@ -42,15 +42,30 @@ class AdminClient(AdminConnection):
         self._poll_registered = True
         self._pollobj.register(self.fileno(), POLLIN | POLLERR | POLLHUP | POLLPRI)
 
-    def __deinit_poll__(self):
+    def __deinit_poll__(self, *args):
         if self._poll_registered:
             self._poll_registered = False
-            self._pollobj.unregister(self.fileno())
+            try:
+                self._pollobj.unregister(self.fileno())
+            except socket.error as error:
+                pass
+            finally:
+                self._pollobj = None
 
     def poll(self, timeout = 1.0):
         """
         Polls the connection for a maximum of <timeout> seconds
+
+        Returns False if the poll mechanism has been deconstructed, or
+        when we are not (yet) connected to the server.
+        Returns a list of (PacketType, Data) for all packets received, 
+        however, only one packet is read per poll call for now (this
+        might change in the future)
         """
+        if not self._poll_registered:
+            return False
+        if not self.is_connected:
+            return False
         events = self._pollobj.poll(timeout * POLL_MOD)
         packets = []
         for fileno, event in events:
