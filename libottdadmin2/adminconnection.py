@@ -216,7 +216,7 @@ class AdminConnection(socket.socket, LoggableObject):
             return (packet, data)
         except PacketNotFound as e:
             self.log.warning("Could not find packet with id %d", packetID)
-            self.packet_recv(packet, data)
+            self.packet_recv(packetID, data)
             return (packetID, data)
         return None
 
