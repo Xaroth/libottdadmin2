@@ -6,6 +6,8 @@
 
 from struct import Struct as OrigStruct
 
+from ..util import LoggableObject
+
 class Struct(OrigStruct):
     """
     We overload the original struct.Struct class
@@ -52,7 +54,13 @@ def unpack_str(data, index = 0):
     except ValueError:
         raise
 
-class Packet(object):
+class ValidationError(Exception):
+    """
+    Raised when a packet fails to encode to its stream value.
+    """
+    pass
+
+class Packet(LoggableObject):
     packetID = None
     @classmethod
     def pack(self, format, *args):
