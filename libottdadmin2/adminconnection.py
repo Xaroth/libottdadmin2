@@ -1,3 +1,9 @@
+#
+# This file is part of libottdadmin2
+#
+# License: http://creativecommons.org/licenses/by-nc-sa/3.0/
+#
+
 from libottdadmin2.packets import *
 from libottdadmin2 import VERSION
 from libottdadmin2.event import Event

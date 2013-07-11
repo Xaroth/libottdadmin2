@@ -1,3 +1,9 @@
+#
+# This file is part of libottdadmin2
+#
+# License: http://creativecommons.org/licenses/by-nc-sa/3.0/
+#
+
 from .registry import receive
 from .base import ReceivingPacket, Struct
 from ..util import gamedate_to_datetime

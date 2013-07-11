@@ -1,4 +1,10 @@
 #
+# This file is part of libottdadmin2
+#
+# License: http://creativecommons.org/licenses/by-nc-sa/3.0/
+#
+
+#
 # Helper imports:
 #  This allows you to use the select.poll functionality 
 #  ( http://docs.python.org/2/library/select.html#poll-objects )
