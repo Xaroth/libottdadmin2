@@ -1,7 +1,7 @@
 from .util import LoggableObject
 
 class Event(LoggableObject):
-    def __init__(self, origin):
+    def __init__(self, origin = None):
         self._handlers = []
         self._origin = origin
 
@@ -15,8 +15,8 @@ class Event(LoggableObject):
         self._handlers.remove(handler)
         return self
 
-    def __call__(self, origin=None, *args, **kwargs):
-        origin = origin or self._origin
+    def __call__(self, *args, **kwargs):
+        origin = kwargs.get('origin', self._origin)
         for handler in self._handlers:
             self.log.debug("Calling handler: '%r'", handler)
             try:
