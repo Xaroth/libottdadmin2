@@ -32,6 +32,8 @@ from .packets import *
 from .event import Event
 from .adminconnection import AdminConnection
 
+import socket
+
 class AdminClient(AdminConnection):
     """
     The AdminClient class is a wrapper around the AdminConnection, allowing
