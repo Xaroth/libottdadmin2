@@ -1,8 +1,9 @@
 from .util import LoggableObject
 
 class Event(LoggableObject):
-    def __init__(self):
+    def __init__(self, origin):
         self._handlers = []
+        self._origin = origin
 
     def __iadd__(self, handler):
         self.log.debug("Appending handler: '%r'", handler)
@@ -14,10 +15,14 @@ class Event(LoggableObject):
         self._handlers.remove(handler)
         return self
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, origin=None, *args, **kwargs):
+        origin = origin or self._origin
         for handler in self._handlers:
             self.log.debug("Calling handler: '%r'", handler)
-            handler(*args, **kwargs) 
+            try:
+                handler(origin=origin, *args, **kwargs) 
+            except TypeError as e:
+                handler(*args, **kwargs)
 
     def clear(self, from_object = None):
         if from_object is None:

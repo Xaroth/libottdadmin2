@@ -16,10 +16,10 @@ class AdminConnection(socket.socket, LoggableObject):
     format_packetid  = Struct.create("B")
 
     def __init_events__(self):
-        self.connected = Event()
-        self.disconnected = Event()
-        self.packet_send = Event()        
-        self.packet_recv = Event()
+        self.connected = Event(self)
+        self.disconnected = Event(self)
+        self.packet_send = Event(self)        
+        self.packet_recv = Event(self)
 
     def __init_handlers__(self):
         self.connected += self.on_connect
