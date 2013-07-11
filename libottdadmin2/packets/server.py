@@ -8,6 +8,11 @@ from .registry import receive
 from .base import ReceivingPacket, Struct
 from ..util import gamedate_to_datetime
 
+try:
+    import json
+except ImportError:
+    import simplejson as json 
+
 @receive.packet
 class ServerFull(ReceivingPacket):
     packetID = 100
@@ -344,20 +349,78 @@ class ServerConsole(ReceivingPacket):
 @receive.packet
 class ServerCmdNames(ReceivingPacket):
     packetID = 122
+    format_bool = Struct.create("B")
+    format_uint16 = Struct.create("H")
 
     def decode(self, data):
-        pass
+        index = 1
+        cont = bool(self.unpack(self.format_bool, data[index-1]))
+        commands = {}
+        while cont:
+            cmd_id = self.unpack(self.format_uint16, data, index)
+            index += self.format_uint16.size
+            cmd_name = self.unpack_str(data)
+            index += len(cmd_name) + 2 # +2 so we only have to increment once
+            cont = bool(self.unpack(self.format_bool, data[index-1]))
+            commands[cmd_id] = cmd_name
+        return {
+            'commands':     commands,
+        }            
 
 @receive.packet
 class ServerCmdLogging(ReceivingPacket):
     packetID = 123
+    format = Struct.create("IBHIII")
+    format_frame = Struct.create("I")
 
     def decode(self, data):
-        pass 
+        clientID, company, cmd_id, param1, param2, tile = self.unpack(self.format, data)
+        index = self.format.size
+        text = self.unpack_str(data, index)
+        index += len(text) + 1
+        frame = self.unpack(self.format_frame, data, index)
+        return {
+            'clientID':     clientID,
+            'company':      company,
+            'commandID':    cmd_id,
+            'param1':       param1,
+            'param2':       param2,
+            'tile':         tile,
+            'text':         text,
+            'frame':        frame
+        }
 
 @receive.packet
 class ServerGamescript(ReceivingPacket):
     packetID = 124
 
     def decode(self, data):
-        pass 
+        json_string = self.unpack_str(data)
+        try:
+            json_data = json.loads(json_string)
+        except ValueError as error:
+            self.log.exception("Malformed json data received: %r.", json_string)
+        return {
+            'data':         json_data,
+        }
+
+@receive.packet
+class ServerRconEnd(ReceivingPacket):
+    packetID = 125
+
+    def decode(self, data):
+        command = self.unpack_str(data)
+        return {
+            'command':      command,
+        }
+
+@receive.packet
+class ServerPong(ReceivingPacket):
+    packetID = 126
+    format = Struct.create("I")
+
+    def decode(self, data):
+        payload = self.unpack(self.format, data)
+        return {
+            'payload':      payload,
+        }

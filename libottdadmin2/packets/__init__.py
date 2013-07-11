@@ -5,7 +5,7 @@
 #
 
 from .registry import receive, send, PacketNotFound
-from .base import Struct, SendingPacket, ReceivingPacket
+from .base import Struct, SendingPacket, ReceivingPacket, ValidationError
 
 from .server import ServerFull, ServerBanned, ServerError, ServerProtocol, \
                     ServerWelcome, ServerNewGame, ServerShutdown, ServerDate, \
