@@ -91,7 +91,8 @@ class AdminGamescript(SendingPacket):
         if len(json_string) >= NETWORK_GAMESCRIPT_JSON_LENGTH:
             raise ValidationError("Data object serializes to a json string that's too long to send.")
         yield self.pack_str(json_string)
-        
+
+@send.packet
 class AdminPing(SendingPacket):
     packetID = 7
     format = Struct.create("I")
