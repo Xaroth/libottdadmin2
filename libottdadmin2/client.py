@@ -60,6 +60,7 @@ class AdminClient(AdminConnection):
 
         Returns False if the poll mechanism has been deconstructed, or
         when we are not (yet) connected to the server.
+        Returns None if the connection has been lost.
         Returns a list of (PacketType, Data) for all packets received, 
         however, only one packet is read per poll call for now (this
         might change in the future)
@@ -74,7 +75,11 @@ class AdminClient(AdminConnection):
             if fileno != self.fileno():
                 continue
             if (event & POLLIN) or (event & POLLPRI):
-                packets.append(self.recv_packet())
+                packet = self.recv_packet()
+                if packet is None:
+                    self.force_disconnect()
+                    return None
+                packets.append(packet)
             elif (event & POLLERR) or (event & POLLHUP):
                 self.force_disconnect()
         return packets
