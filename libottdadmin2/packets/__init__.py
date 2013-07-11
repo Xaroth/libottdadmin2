@@ -1,4 +1,4 @@
-from .registry import receive, send
+from .registry import receive, send, PacketNotFound
 from .base import Struct, SendingPacket, ReceivingPacket
 
 from .server import ServerFull, ServerBanned, ServerError, ServerProtocol, \
