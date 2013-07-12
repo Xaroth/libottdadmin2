@@ -7,3 +7,7 @@ The primary authors are (or have been):
 Below is a list of contributors; people who have submitted patches,
 reported bugs, or otherwise helped complete libottdadmin2:
 
+    * Patric 'TrueBrain' Stout, for his mad rambling that gave me some good
+                                 insight while working on this.
+    * Ingo 'planetmaker' von Borstel, for his help testing the library in it's
+                                 early days.
