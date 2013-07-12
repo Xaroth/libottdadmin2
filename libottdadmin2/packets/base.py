@@ -78,7 +78,15 @@ class Packet(LoggableObject):
     def unpack_str(self, data, index = 0):
         return unpack_str(data, index)
 
-
+    def __eq__(self, other):
+        if isinstance(other, (int, long)):
+            return self.packetID == other
+        try:
+            return self.packetID == other.packetID
+        except (AttributeError, TypeError, ValueError):
+            pass
+        return False
+        
     def __unicode__(self):
         return self.__class__.__name__
     __str__ = __unicode__
