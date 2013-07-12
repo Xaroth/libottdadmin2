@@ -7,8 +7,7 @@
 
 from optparse import OptionParser
 import socket
-from libottdadmin2.adminconnection import AdminConnection, AdminRcon, ServerRcon
-from libottdadmin2.packets.base import unpack_str
+from libottdadmin2.client import AdminClient, AdminRcon, ServerRcon, ServerRconEnd
 
 import logging
 logging.basicConfig(level=logging.CRITICAL)
@@ -41,7 +40,7 @@ if __name__ == "__main__":
     if options.verbose:
         print("Connecting to %(host)s:%(port)s" % {'host': options.host, 'port': options.port})
 
-    connection = AdminConnection()
+    connection = AdminClient()
     connection.settimeout(0.4)
     connection.configure(password=options.password, host=options.host, port=options.port)
     connection.connect()
@@ -59,29 +58,28 @@ if __name__ == "__main__":
         print("Unable to connect to %(host)s:%(port)s" % {'host': options.host, 'port': options.port})
     else:
         for command in args:
+            if not connection.is_connected:
+                break
             if options.verbose:
                 print("Sending Rcon command: '%s'" % command)
             connection.send_packet(AdminRcon, command = command)
-            while True:
-                try:
-                    response = connection.recv_packet()
-                    if response and (options.verbose or options.output_only):
-                        if response[0] == ServerRcon:
-                            print(">>> %s" % response[1]['result'])
-                        elif isinstance(response[0], (int, long)):
-                            try:
-                                # Do a crude check for a SERVER_RCON_END packet
-                                # Since it's not in live yet, we don't support it
-                                # but we know what it is.
-                                cmd_check = unpack_str(response[1])
-                                if cmd_check == command:
-                                    print("<<< END OF COMMAND >>>")
-                                    break
-                            except:
-                                continue
-                except socket.error:
-                    break
 
+            cont = True
+            while cont:
+                packets = connection.poll()
+                if packets is None or packets is False:
+                    print("Connection lost!")
+                    break
+                cont = len(packets) > 0
+                for packet, data in packets:
+                    if packet == ServerRcon:
+                        print(">>> %s" % data['result'])
+                    elif packet == ServerRconEnd:
+                        print("<<< END OF COMMAND >>>")
+                        cont = False
+                        break
+                    else:
+                        pass
     if options.verbose:
         print("Disconnecting")
     connection.disconnect()    
