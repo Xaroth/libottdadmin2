@@ -126,7 +126,7 @@ class ServerClientInfo(ReceivingPacket):
         index += len(hostname)+1
         name = self.unpack_str(data, index)
         index += len(name)+1
-        language, joindate, play_as = self.unpack(format, data, index)
+        language, joindate, play_as = self.unpack(self.format, data, index)
 
         return {
             'clientID':     clientID,
