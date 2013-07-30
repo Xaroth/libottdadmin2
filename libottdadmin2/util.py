@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 GAMEDATE_BASE_DATE = datetime(1, 1, 1)
 
 def gamedate_to_datetime(date):
+    if date < 366: # We really only get 0 occasionally, but cover all the cases.
+        return datetime.min
     return GAMEDATE_BASE_DATE + timedelta(days = date  - 365)
 
 def datetime_to_gamedate(datetime):
