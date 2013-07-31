@@ -13,6 +13,8 @@ from ..constants import NETWORK_GAMESCRIPT_JSON_LENGTH, \
                         NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH
 from ..util import datetime_to_gamedate
 
+from ..enums import AdminUpdateType, AdminUpdateFrequency
+
 try:
     import json
 except ImportError:
@@ -45,6 +47,10 @@ class AdminUpdateFrequency(SendingPacket):
     format = Struct.create("HH")
 
     def encode(self, updateType, updateFreq):
+        if not AdminUpdateType.is_valid(updateType):
+            raise ValidationError("Invalid updateType: '%r'" % updateType)
+        if not AdminUpdateFrequency.is_valid(updateFreq):
+            raise ValidationError("Invalid updateFreq: '%r'" % updateFreq)
         yield self.pack(self.format, updateType, updateFreq)
 
 @send.packet
@@ -53,6 +59,8 @@ class AdminPoll(SendingPacket):
     format = Struct.create("BI")
 
     def encode(self, pollType, extra):
+        if not AdminUpdateType.is_valid(pollType):
+            raise ValidationError("Invalid pollType: '%r'" % pollType)
         yield self.pack(self.format, pollType, extra)
 
 @send.packet
