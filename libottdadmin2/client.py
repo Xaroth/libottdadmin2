@@ -9,7 +9,7 @@
 #  This allows you to use the select.poll functionality 
 #  ( http://docs.python.org/2/library/select.html#poll-objects )
 #  While automatically using epoll if it's available.
-#  .. Keep in mind to multiply the timeeout for poll.poll()
+#  .. Keep in mind to multiply the timeout for poll.poll()
 #     with  POLL_MOD
 #
 
@@ -35,6 +35,7 @@ from .adminconnection import AdminConnection
 import socket
 
 class AdminClient(AdminConnection):
+    _settable_args = AdminConnection._settable_args + ['timeout',]
     """
     The AdminClient class is a wrapper around the AdminConnection, allowing
     a user to create a bot more easy.
@@ -54,7 +55,16 @@ class AdminClient(AdminConnection):
             finally:
                 self._pollobj = None
 
-    def poll(self, timeout = 1.0):
+    _timeout = 1.0
+    @property
+    def timeout(self):
+        return self._timeout
+
+    @timeout.setter
+    def timeout(self, value):
+        self._timeout = float(value)
+
+    def poll(self, timeout = None):
         """
         Polls the connection for a maximum of <timeout> seconds
 
@@ -65,6 +75,8 @@ class AdminClient(AdminConnection):
         however, only one packet is read per poll call for now (this
         might change in the future)
         """
+        if timeout is None:
+            timeout = self.timeout
         if not self._poll_registered:
             return False
         if not self.is_connected:
@@ -131,5 +143,3 @@ class AdminClient(AdminConnection):
 
     def on_map_info_received(self, data):
         self.map_info = data
-
-

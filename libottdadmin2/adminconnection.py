@@ -21,6 +21,8 @@ class AdminConnection(socket.socket, LoggableObject):
     format_packetlen = Struct.create("H")
     format_packetid  = Struct.create("B")
 
+    _settable_args   = ['version', 'password', 'name', 'host', 'port']
+
     def __init_events__(self):
         self.connected = Event(self)
         self.disconnected = Event(self)
@@ -105,7 +107,7 @@ class AdminConnection(socket.socket, LoggableObject):
         - port    : To set the port to connect to
         - password: To set the password to use for authentication.
         """
-        for arg in ['version', 'password', 'name', 'host', 'port']:
+        for arg in self._settable_args:
             if arg in kwargs:
                 setattr(self, arg, kwargs[arg])
 
