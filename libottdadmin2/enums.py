@@ -35,12 +35,12 @@ class EnumHelper(object):
         else:
             return value in self.__rdict
 
-class AdminStatus(EnumHelper):
+class Status(EnumHelper):
     INACTIVE            = 0x00  #< The admin is not connected nor active.
     ACTIVE              = 0x01  #< The admin is active.
     _END                = 0x02  #< Must ALWAYS be on the end of this list!! (period)
 
-class AdminUpdateType(EnumHelper):
+class UpdateType(EnumHelper):
     DATE                = 0x00  #< Updates about the date of the game.
     CLIENT_INFO         = 0x01  #< Updates about the information of clients.
     COMPANY_INFO        = 0x02  #< Updates about the generic information of companies.
@@ -53,7 +53,7 @@ class AdminUpdateType(EnumHelper):
     GAMESCRIPT          = 0x09  #< The admin would like to have gamescript messages.
     _END                = 0x0A  #< Must ALWAYS be on the end of this list!! (period)
 
-class AdminUpdateFrequency(EnumHelper):
+class UpdateFrequency(EnumHelper):
     is_flag             = True
 
     POLL                = 0x01  #< The admin can poll this.
@@ -64,7 +64,7 @@ class AdminUpdateFrequency(EnumHelper):
     ANUALLY             = 0x20  #< The admin gets information about this on a yearly basis.
     AUTOMATIC           = 0x40  #< The admin gets information about this when it changes.
 
-class AdminCompanyRemoveReason(EnumHelper):
+class CompanyRemoveReason(EnumHelper):
     MANUAL              = 0x00  #< The company is manually removed.
     AUTOCLEAN           = 0x01  #< The company is removed due to autoclean.
     BANKRUPT            = 0x02  #< The company went belly-up.
