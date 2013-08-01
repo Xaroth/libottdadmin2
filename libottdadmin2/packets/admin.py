@@ -13,7 +13,7 @@ from ..constants import NETWORK_GAMESCRIPT_JSON_LENGTH, \
                         NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH
 from ..util import datetime_to_gamedate
 
-from ..enums import UpdateType, UpdateFrequency
+from ..enums import UpdateType, UpdateFrequency, Action, DestType
 
 try:
     import json
@@ -69,6 +69,17 @@ class AdminChat(SendingPacket):
     format = Struct.create("BBI")
 
     def encode(self, action, destType, clientID, message):
+        if not isinstance(action (int, long)):
+            raise ValidationError("action is not an int")
+        if action not in [
+            Action.CHAT,
+            Action.CHAT_CLIENT,
+            Action.CHAT_COMPANY,
+            Action.SERVER_MESSAGE,
+            ]:
+            raise ValidationError("Unable to send a message of type: %r" % action)
+        if not DestType.is_valid(destType):
+            raise ValidationError("Invalid destType: %r" % destType)
         if not isinstance(message, basestring):
             raise ValidationError("Message is not a string")
         if len(message) > NETWORK_CHAT_LENGTH:
