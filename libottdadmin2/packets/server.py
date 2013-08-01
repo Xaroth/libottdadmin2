@@ -202,8 +202,8 @@ class ServerCompanyInfo(ReceivingPacket):
             'colour':       colour,
             'passworded':   passworded,
             'startYear':    gamedate_to_datetime(startYear),
-            'startYear_orig': startYear
-            'isAI':         isAI
+            'startYear_orig': startYear,
+            'isAI':         isAI,
         }
 
 @receive.packet
