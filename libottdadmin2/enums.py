@@ -102,6 +102,9 @@ class DestType(EnumHelper):
     TEAM                = 0x01  #< Send message/notice to everyone playing the same company (Team)
     CLIENT              = 0x02  #< Send message/notice to only a certain client (Private)
 
+class PollExtra(EnumHelper):
+    ALL                 = 0xFFFFFFFF
+
 class Action(EnumHelper):
     JOIN                = 0x00
     LEAVE               = 0x01
