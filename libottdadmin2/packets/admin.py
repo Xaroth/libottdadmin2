@@ -69,7 +69,7 @@ class AdminChat(SendingPacket):
     format = Struct.create("BBI")
 
     def encode(self, action, destType, clientID, message):
-        if not isinstance(action (int, long)):
+        if not isinstance(action, (int, long)):
             raise ValidationError("action is not an int")
         if action not in [
             Action.CHAT,
