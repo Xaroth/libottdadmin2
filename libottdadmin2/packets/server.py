@@ -194,6 +194,7 @@ class ServerCompanyInfo(ReceivingPacket):
         name = self.unpack_str(data, index)
         index += len(name)+1
         manager = self.unpack_str(data, index)
+        index += len(manager)+1
         colour, passworded, startYear, isAI = self.unpack(self.format_info, data, index)
         return {
             'companyID':    companyID,
