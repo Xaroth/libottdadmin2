@@ -41,6 +41,14 @@ class EnumHelper(object):
         else:
             return value in self.__rdict
 
+    @classmethod
+    def get_name(self, value):
+        return self.__rdict.get(value, None)
+
+    @classmethod
+    def get_from_name(self, name):
+        return self.__dict.get(name, None)
+
 class Status(EnumHelper):
     INACTIVE            = 0x00  #< The admin is not connected nor active.
     ACTIVE              = 0x01  #< The admin is active.
