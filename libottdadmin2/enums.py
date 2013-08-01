@@ -75,3 +75,34 @@ class CompanyRemoveReason(EnumHelper):
     AUTOCLEAN           = 0x01  #< The company is removed due to autoclean.
     BANKRUPT            = 0x02  #< The company went belly-up.
     _END                = 0x03  #< Sentinel for end.
+
+class VehicleType(EnumHelper):
+    TRAIN               = 0x00
+    LORRY               = 0x01
+    BUS                 = 0x02
+    PLANE               = 0x03
+    SHIP                = 0x04
+    _END                = 0x05
+    
+class ClientID(EnumHelper):
+    INVALID             = 0x00  #< Client is not part of anything
+    SERVER              = 0x01  #< Servers always have this ID
+    FIRST               = 0x02  #< The first client ID
+
+class DestType(EnumHelper):
+    BROADCAST           = 0x00  #< Send message/notice to all clients (All)
+    TEAM                = 0x01  #< Send message/notice to everyone playing the same company (Team)
+    CLIENT              = 0x02  #< Send message/notice to only a certain client (Private)
+
+class Action(EnumHelper):
+    JOIN                = 0x00
+    LEAVE               = 0x01
+    SERVER_MESSAGE      = 0x02
+    CHAT                = 0x03
+    CHAT_COMPANY        = 0x04
+    CHAT_CLIENT         = 0x05
+    GIVE_MONEY          = 0x06
+    NAME_CHANGE         = 0x07
+    COMPANY_SPECTATOR   = 0x08
+    COMPANY_JOIN        = 0x09
+    COMPANY_NEW         = 0x0A
