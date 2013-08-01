@@ -246,7 +246,7 @@ class ServerCompanyRemove(ReceivingPacket):
 @receive.packet
 class ServerCompanyEconomy(ReceivingPacket):
     packetID = 117
-    format = Struct.create("BQQQH")
+    format = Struct.create("BqQQH")
     format_stats = Struct.create("QHH")
 
     def decode(self, data):
