@@ -201,7 +201,8 @@ class ServerCompanyInfo(ReceivingPacket):
             'manager':      manager,
             'colour':       colour,
             'passworded':   passworded,
-            'startYear':    startYear,
+            'startYear':    gamedate_to_datetime(startYear),
+            'startYear_orig': startYear
             'isAI':         isAI
         }
 
