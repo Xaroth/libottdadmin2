@@ -2,4 +2,4 @@ include README.md
 include AUTHORS
 include LICENSE
 include MANIFEST.in
-revursive-exclude  * *.py[co]
+recursive-exclude  * *.py[co]
