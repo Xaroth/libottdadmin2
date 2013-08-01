@@ -114,3 +114,50 @@ class Action(EnumHelper):
     COMPANY_SPECTATOR   = 0x08
     COMPANY_JOIN        = 0x09
     COMPANY_NEW         = 0x0A
+
+class ErrorCode(EnumHelper):
+    GENERAL             = 0x00  #< Try to use this one like never
+
+    #/* Signals from clients */
+    DESYNC              = 0x01
+    SAVEGAME_FAILED     = 0x02
+    CONNECTION_LOST     = 0x03
+    ILLEGAL_PACKET      = 0x04
+    NEWGRF_MISMATCH     = 0x05
+
+    #/* Signals from servers */
+    NOT_AUTHORIZED      = 0x06
+    NOT_EXPECTED        = 0x07
+    WRONG_REVISION      = 0x08
+    NAME_IN_USE         = 0x09
+    WRONG_PASSWORD      = 0x0A
+    COMPANY_MISMATCH    = 0x0B  #< Happens in CLIENT_COMMAND
+    KICKED              = 0x0C
+    CHEATER             = 0x0D
+    FULL                = 0x0E
+    TOO_MANY_COMMANDS   = 0x0F
+    TIMEOUT_PASSWORD    = 0x10
+    TIMEOUT_COMPUTER    = 0x11
+    TIMEOUT_MAP         = 0x12
+    TIMEOUT_JOIN        = 0x13
+    _END                = 0x14
+
+class Colour(EnumHelper):
+    COLOUR_DARK_BLUE    = 0x00
+    COLOUR_PALE_GREEN   = 0x01
+    COLOUR_PINK         = 0x02
+    COLOUR_YELLOW       = 0x03
+    COLOUR_RED          = 0x04
+    COLOUR_LIGHT_BLUE   = 0x05
+    COLOUR_GREEN        = 0x06
+    COLOUR_DARK_GREEN   = 0x07
+    COLOUR_BLUE         = 0x08
+    COLOUR_CREAM        = 0x09
+    COLOUR_MAUVE        = 0x0A
+    COLOUR_PURPLE       = 0x0B
+    COLOUR_ORANGE       = 0x0C
+    COLOUR_BROWN        = 0x0D
+    COLOUR_GREY         = 0x0E
+    COLOUR_WHITE        = 0x0F
+    COLOUR_END          = 0x10
+    INVALID_COLOUR      = 0xFF
