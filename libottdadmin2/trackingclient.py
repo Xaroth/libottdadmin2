@@ -45,6 +45,7 @@ from collections import defaultdict
 
 from datetime import datetime, timedelta
 import time
+import socket
 
 def handles_packet(*items):
     packets = [x if isinstance(x, (int, long)) else x.packetID for x in items]
@@ -161,6 +162,10 @@ class TrackingEvents(object):
         self.companyremove  = Event()
         self.companystats   = Event()
         self.companyeconomy = Event()
+
+        self.chat           = Event()
+        self.rcon           = Event()
+        self.console        = Event()
 
         self.pong           = Event()
 
@@ -310,7 +315,7 @@ class TrackingAdminClient(AdminConnection):
             pid = packetType.packetID
 
         for handler in self.packet_handlers[pid]:
-            handler(**packetData)
+            handler(**(packetData or {}))
 
 
     def ping(self):
@@ -342,6 +347,9 @@ class TrackingAdminClient(AdminConnection):
     mapinfo     = MapInfo()
     serverinfo  = ServerInfo()
     date        = datetime.min
+
+    clients     = {}
+    companies   = {}
 
     @handles_packet(ServerWelcome)
     def _server_welcome(self, **kwargs):
@@ -448,3 +456,17 @@ class TrackingAdminClient(AdminConnection):
             return
         company.economy.update(kwargs)
         self.events.companyeconomy(company)
+
+    @handles_packet(ServerChat)
+    def _server_chat(self, **kwargs):
+        data = dict(kwargs.items())
+        client = self.clients.get(data['clientID'], data['clientID'])
+        self.events.chat(**data)
+
+    @handles_packet(ServerRcon)
+    def _server_rcon(self, result, colour):
+        self.events.rcon(result, colour)
+
+    @handles_packet(ServerConsole)
+    def _server_console(self, message, origin):
+        self.events.console(message, origin)
