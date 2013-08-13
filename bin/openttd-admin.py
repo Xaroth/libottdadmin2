@@ -22,7 +22,7 @@ except ImportError as e:
     print >> sys.stderr, "Please check if you have the urwid library installed."
     sys.exit(1)
 
-from libottdadmin2.client import *
+from libottdadmin2.trackingclient import *
 from libottdadmin2.enums import *
 from libottdadmin2.constants import *
 
@@ -115,187 +115,6 @@ def except_hook(extype, exobj, extb, manual=False):
             }
         print >> sys.stderr, message
 
-class ExtendedAdminConnection(AdminClient):
-    update_types = [
-        (UpdateType.CLIENT_INFO, UpdateFrequency.AUTOMATIC),
-        (UpdateType.COMPANY_INFO, UpdateFrequency.AUTOMATIC),
-        (UpdateType.CHAT, UpdateFrequency.AUTOMATIC),
-        (UpdateType.CONSOLE, UpdateFrequency.AUTOMATIC),
-        (UpdateType.DATE, UpdateFrequency.DAILY),
-    ]
-    def __init_events__(self):
-        super(ExtendedAdminConnection, self).__init_events__()
-        self.datechanged    = Event()
-
-        self.clientjoin     = Event()
-        self.clientinfo     = Event()
-        self.clientupdate   = Event()
-        self.clientquit     = Event()
-
-        self.companynew     = Event()
-        self.companyinfo    = Event()
-        self.companyupdate  = Event()
-        self.companyremove  = Event()
-
-        self.chat           = Event()
-        self.rcon           = Event()
-        self.console        = Event()
-        self.pong           = Event()
-
-    def __init_handlers__(self):
-        super(ExtendedAdminConnection, self).__init_handlers__()
-        self._packet_handlers[ServerDate.packetID]          = self.on_serverdate
-
-        self._packet_handlers[ServerClientJoin.packetID]    = self.on_clientjoin
-        self._packet_handlers[ServerClientInfo.packetID]    = self.on_clientinfo
-        self._packet_handlers[ServerClientUpdate.packetID]  = self.on_clientupdate
-        self._packet_handlers[ServerClientQuit.packetID]    = self.on_clientquit
-        self._packet_handlers[ServerClientError.packetID]   = self.on_clienterror
-
-        self._packet_handlers[ServerCompanyNew.packetID]    = self.on_companynew
-        self._packet_handlers[ServerCompanyInfo.packetID]   = self.on_companyinfo
-        self._packet_handlers[ServerCompanyUpdate.packetID] = self.on_companyupdate
-        self._packet_handlers[ServerCompanyRemove.packetID] = self.on_companyremove
-
-        self._packet_handlers[ServerChat.packetID]          = self.on_chat
-        self._packet_handlers[ServerRcon.packetID]          = self.on_rcon
-        self._packet_handlers[ServerConsole.packetID]       = self.on_console
-        self._packet_handlers[ServerPong.packetID]          = self.on_pong
-
-    def __init__(self, *args, **kwargs):
-        super(ExtendedAdminConnection, self).__init__(*args, **kwargs)
-        self.clients = {}
-        self.pending_clients = []
-        self.pending_companies = []
-        self.companies = {
-            255: {
-                'companyID': 255,
-                'name': 'spectators',
-                'manager': 'S Tator',
-                'colour': 0,
-                'passworded': False, 
-                'startYear': 1,
-                'isAI': False,
-            }
-        }
-        self.pings = {}
-        self.date = datetime.min
-
-    def on_connect(self):
-        super(ExtendedAdminConnection, self).on_connect()
-        for updType, updFreq in self.update_types:
-            self.send_packet(AdminUpdateFrequency, updateType = updType, updateFreq = updFreq)
-
-    def on_map_info_received(self, data):
-        super(ExtendedAdminConnection, self).on_map_info_received(data)
-        self.clients = {}
-        self.pending_clients = []
-        self.pending_companies = []
-        self.send_packet(AdminPoll, pollType = UpdateType.CLIENT_INFO,  extra = 0xFFFFFFFF)
-        self.companies = {
-            255: {
-                'companyID': 255,
-                'name': 'spectators',
-                'manager': 'S Tator',
-                'colour': 0,
-                'passworded': False, 
-                'startYear': data['startyear'].year,
-                'isAI': False,
-            }
-        }
-        self.send_packet(AdminPoll, pollType = UpdateType.COMPANY_INFO, extra = 0xFFFFFFFF)
-        self.date = datetime.min
-        self.send_packet(AdminPoll, pollType = UpdateType.DATE,         extra = 0xFFFFFFFF)
-
-    def on_serverdate(self, data):
-        self.date = data.get('date', datetime.min)
-        self.datechanged(self.date)
-
-    def on_clientjoin(self, data):
-        self.pending_clients.append(data['clientID'])
-        self.clientjoin(data, False)
-        self.send_packet(AdminPoll, pollType = UpdateType.CLIENT_INFO, extra = data['clientID'])
-
-    def on_clientinfo(self, data):
-        self.clients[data.get('clientID', -1)] = data
-        cid = data.get('clientID')
-        if cid == ClientID.SERVER:
-            self.clients[ClientID.SERVER].update({
-                'name': self.map_info['name'],
-                'hostname': '%s:%s' % (self.host, self.port),
-                'joindate': self.map_info['startyear'],
-                'play_as': 255,
-                'language': 0,
-                })
-        if cid in self.pending_clients:
-            self.pending_clients.remove(cid)
-            self.clientjoin(data, True)
-        self.clientinfo(data)
-
-    def on_clientupdate(self, data):
-        cid = data.get('clientID')
-
-        old = dict(self.clients.get(cid, {}))
-        self.clients.setdefault(cid, {}).update(data)
-        newdata = self.clients[cid]
-        self.clientupdate(old, newdata)
-
-    def on_clientquit(self, data):
-        old = self.clients.get(data['clientID'], {}) 
-        self.clientquit(data['clientID'], old, False)
-        if data['clientID'] in self.clients:
-            del self.clients[data['clientID']]
-
-    def on_clienterror(self, data):
-        old = self.clients.get(data['clientID'], {}) 
-        self.clientquit(data['clientID'], old, data['errorcode'])
-        if data['clientID'] in self.clients:
-            del self.clients[data['clientID']]        
-
-    def on_companynew(self, data):
-        self.companynew(data, False)
-        self.send_packet(AdminPoll, pollType = UpdateType.COMPANY_INFO, extra = data['companyID'])
-
-    def on_companyinfo(self, data):
-        cid = data['companyID']
-        self.companies[cid] = data
-        self.companyinfo(data)
-        if cid in self.pending_companies:
-            self.pending_companies.remove(cid)
-            self.companynew(data, True)
-
-    def on_companyupdate(self, data):
-        old = dict(self.companies.get(data['companyID'], {}))
-        self.companies.setdefault(data['companyID'], {}).update(data)
-        self.companyupdate(old, self.companies[data['companyID']])
-
-    def on_companyremove(self, data):
-        if data['companyID'] in self.companies:
-            self.companyremove(self.companies[data['companyID']], data['reason'])
-            del self.companies[data['companyID']]
-
-    def on_chat(self, data):
-        self.chat(data['action'], data['destType'], data['clientID'], data['message'], data['data'])
-
-    def on_rcon(self, data):
-        self.rcon(data['result'], data['colour'])
-
-    def on_console(self, data):
-        self.console(data['origin'], data['message'])
-
-    def on_pong(self, data):
-        if data['payload'] in self.pings:
-            start = self.pings[data['payload']]
-            end = datetime.now()
-            del self.pings[data['payload']]
-            self.pong(start, end, end - start)
-
-    def ping(self):
-        index = len(self.pings.keys()) + 1
-        self.pings[index] = datetime.now()
-        self.send_packet(AdminPing, payload = index)
-
-
 class OpenTTDAdmin(object):
     running = True
     def __init__(self, options, args):
@@ -355,15 +174,15 @@ class OpenTTDAdmin(object):
         self._init_widgets()
         self.update_divider()
 
-    def update_divider(self, *args):
+    def update_divider(self, *args, **kwargs):
         markup = []
         if self.connection and self.connection.is_connected:
             markup.append("Connected to: ")
             markup.append(("divider-hilight", "%s:%d" % (self.connection.host, self.connection.port)))
             markup.append(" ")
-            if 'version' in self.connection.map_info:
+            if self.connection.serverinfo.version:
                 markup.append("(")
-                markup.append(("divider-hilight", self.connection.map_info['version']))
+                markup.append(("divider-hilight", self.connection.serverinfo.version))
                 markup.append(") ")
             if self.connection.date:
                 markup.append("Date: ")
@@ -372,9 +191,9 @@ class OpenTTDAdmin(object):
                     'month': self.connection.date.month,
                     'year': self.connection.date.year,
                     })
-            if 'dedicated' in self.connection.map_info:
+            if self.connection.serverinfo.dedicated:
                 markup.append(", ")
-                amount = (len(self.connection.clients) - (1 if self.connection.map_info['dedicated'] else 0))
+                amount = (len(self.connection.clients) - (1 if self.connection.serverinfo.dedicated else 0))
                 markup.append(("divider-hilight", str(amount)))
                 markup.append(" player%s" % ("s" if amount != 1 else ""))
         else:
@@ -411,38 +230,38 @@ class OpenTTDAdmin(object):
         self.main_loop.set_alarm_in(0.01, self.poll)
 
     def _attach_events(self):
-        self.connection.connected       += self.update_divider
-        self.connection.disconnected    += self.update_divider
-        self.connection.datechanged     += self.update_divider
-        self.connection.map_info_received += self.map_info_received
+        conn = self.connection
+        conn.events.connected       += self.update_divider
+        conn.events.disconnected    += self.update_divider
+        conn.events.datechanged     += self.update_divider
+        conn.events.protocol        += self.update_divider
+        conn.events.new_map         += self.update_divider
 
-        self.connection.pong            += self.on_pong
-        self.connection.chat            += self.on_chat
-        self.connection.rcon            += self.on_rcon
-        #self.connection.console         += self.on_console
+        conn.events.pong            += self.on_pong
+        conn.events.chat            += self.on_chat
+        conn.events.rcon            += self.on_rcon
+        #conn.events.console         += self.on_console
 
-        self.connection.clientjoin      += self.on_clientjoin
-        self.connection.clientquit      += self.on_clientquit
-        self.connection.clientupdate    += self.on_clientupdate
+        conn.events.clientjoin      += self.on_clientjoin
+        conn.events.clientquit      += self.on_clientquit
+        conn.events.clientupdate    += self.on_clientupdate
 
     def _detach_events(self):
-        self.connection.connected       -= self.update_divider
-        self.connection.disconnected    -= self.update_divider
-        self.connection.datechanged     -= self.update_divider
-        self.connection.map_info_received -= self.map_info_received
+        conn = self.connection
+        conn.events.connected       -= self.update_divider
+        conn.events.disconnected    -= self.update_divider
+        conn.events.datechanged     -= self.update_divider
+        conn.events.protocol        -= self.update_divider
+        conn.events.new_map         -= self.update_divider
 
-        self.connection.pong            -= self.on_pong
-        self.connection.chat            -= self.on_chat
-        self.connection.rcon            -= self.on_rcon
-        #self.connection.console         -= self.on_console
+        conn.events.pong            -= self.on_pong
+        conn.events.chat            -= self.on_chat
+        conn.events.rcon            -= self.on_rcon
+        #conn.events.console         -= self.on_console
 
-        self.connection.clientjoin      -= self.on_clientjoin
-        self.connection.clientquit      -= self.on_clientquit
-        self.connection.clientupdate    -= self.on_clientupdate
-
-
-    def map_info_received(self, data):
-        self.update_divider()
+        conn.events.clientjoin      -= self.on_clientjoin
+        conn.events.clientquit      -= self.on_clientquit
+        conn.events.clientupdate    -= self.on_clientupdate
 
     def cmd_ping(self, args):
         if self.connection is None or self.connection.is_connected == False:
@@ -533,11 +352,10 @@ class OpenTTDAdmin(object):
                 return
             self.append_chat(origin = old['name'], type="UPDATE", message="Left team '%s' to join '%s'" % (oldc['name'], newc['name']))
 
-    def on_chat(self, action, destType, clientID, message, data):
-        client = self.connection.clients.get(clientID, None)
+    def on_chat(self, client, action, destType, clientID, message, data):
         name = str(clientID)
-        if client:
-            name = client['name']
+        if client != clientID:
+            name = client.name
         if action == Action.CHAT:
             self.append_chat(origin = name, type="CHAT", message=message)
         elif action == Action.CHAT_COMPANY:
@@ -612,13 +430,16 @@ class OpenTTDAdmin(object):
             self.connection = None
         if not self.check_settings(verbose):
             return
-        self.connection = ExtendedAdminConnection()
+        if not self.connection:
+            self.connection = TrackingAdminClient()
+            self._attach_events()
+        else:
+            self.connection = self.connection.reset()
         self.connection.configure(
             host = self.options.host,
             port = self.options.port,
             password = self.options.password,
-            timeout = 0.1)
-        self._attach_events()
+            timeout = 0.1)        
         self.append("Connecting to: %(host)s:%(port)d" % {'host': self.options.host, 'port': self.options.port})
         self.connection.connect()
 
