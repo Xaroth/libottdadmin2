@@ -256,8 +256,9 @@ class OpenTTDAdmin(object):
 
     @swallow_args
     def _disconnected(self):
-        self.state = ConnectionState.DISCONNECTED
-        self.add_notice("Disconnected from server")
+        if self.state != ConnectionState.DISCONNECTED:
+            self.state = ConnectionState.DISCONNECTED
+            self.add_notice("Disconnected from server")
 
     def _pong(self, start, end, taken):
         self.add_notice("PONG] response took: %s" % str(taken))
@@ -292,8 +293,11 @@ class OpenTTDAdmin(object):
     def _clientupdate(self, old, client, changed):
         if 'play_as' in changed:
             company = self.connection.companies.get(client.play_as)
+            self.add_debug("Client joined company ID: %d" % client.play_as)
             if company:
                 self.add_chat(origin = client.name, is_action = True, message = "joined company '%s'" % company.name)
+            else:
+                self.add_chat(origin = client.name, is_action = True, message = "started a new company (#%d)" % client.play_as)
         if 'name' in changed:
             self.add_chat(origin = old.name, is_action = True, message = "is now known as %s" % client.name)
 
@@ -569,10 +573,13 @@ class OpenTTDAdmin(object):
         index = self._hist_index + direction
         self.add_debug("index: %d" % index)
         if index < 0:
-            index = -1
             if self._hist_index == 0:
                 self.set_edit(self._hist_last or "")
                 self._hist_last = None
+            elif self._hist_index == -1 and index == -2:
+                self.set_edit(self._hist_last or "")
+                self._hist_last = None
+            index = -1
             return
         elif index >= len(self._history):
             index = len(self._history) - 1
@@ -584,6 +591,7 @@ class OpenTTDAdmin(object):
         if self._hist_index == -1:
             self.add_debug("setting last item.")
             self._hist_last = self.clear_edit()
+        self._hist_index = index
         self.set_edit(item)
 
     def keypress(self, size, key):
@@ -611,32 +619,43 @@ class OpenTTDAdmin(object):
 
     def handle_command(self):
         line = self.clear_edit()
-        self._history.insert(0, line)
-        self._hist_index = -1
-        self.do_cmd(line)
+        ret = self.do_cmd(line)
+        if ret != -1:
+            self._history.insert(0, line)
+            self._hist_index = -1
 
     def do_cmd(self, line):
         if len(line) < 1:
-            return
+            return -1 # Don't record this command in the history list
         parts = line.split(' ', 1)
         if len(parts) < 1:
-            return
+            return -1 # Don't record this command in the history list
         command = parts[0]
         args_orig = ''
         if len(parts) > 1:
             args_orig = parts[1]
         args = shlex.split(args_orig)
         if command in self.command_handlers:
-            self.command_handlers[command](command, args_orig, args)
+            return self.command_handlers[command](command, args_orig, args)
         else:
             self.add_error("Unknown command: '%s'" % command)
+
+    @command("history")
+    @swallow_args
+    def _showhistory(self):
+        hist = self._history[:]
+        hist.reverse()
+        for i, line in enumerate(hist):
+            self.add_line("%5d : %s" % (i, line))
+        return -1 # Don't record this command in the history list
 
     @command("help", "?")
     @swallow_args
     def _help(self):
-        commands = self.command_handlers.keys()
+        commands = sorted(self.command_handlers.keys())
         self.add_notice("Available commands:")
         self.add_line(", ".join(commands))
+        return -1 # Don't record this command in the history list
 
     @command("set")
     def _set(self, cmd, args_orig, args):
@@ -663,6 +682,7 @@ class OpenTTDAdmin(object):
         elif key == "password":
             self.options.password = val
             self.add_notice("Password set")
+            return -1 # Don't record this command in the history list
         elif key == "debug":
             if val.lower() in ("true", "1", "on"):
                 self.debug = True
