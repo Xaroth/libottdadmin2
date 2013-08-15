@@ -723,6 +723,61 @@ class OpenTTDAdmin(object):
         self.add_line("Company list", align="center")
         self.add_table(headers, companylist)
 
+    @command("economy")
+    @swallow_args
+    def _economy(self):
+        economylist = [dict(x.economy.to_dict(), **x.to_dict()) for x in self.connection.companies.values()]
+        headers = [
+            "id",
+            "name",
+            "money",
+            "currentLoan",
+            "income",
+        ]
+        self.add_line("Economy stats")
+        self.add_table(headers, economylist)
+
+    @command("vehicles")
+    @swallow_args
+    def _vehicles(self):
+        stats = [dict(x.vehicles.to_dict(), **x.to_dict()) for x in self.connection.companies.values()]
+        headers = [
+            "id",
+            "name",
+            "train",
+            "bus",
+            "lorry",
+            "plane",
+            "ship",
+        ]
+        self.add_line("Vehicle stats")
+        self.add_table(headers, stats)
+
+    @command("stations")
+    @swallow_args
+    def _stations(self):
+        stats = [dict(x.stations.to_dict(), **x.to_dict()) for x in self.connection.companies.values()]
+        headers = [
+            "id",
+            "name",
+            "train",
+            "bus",
+            "lorry",
+            "plane",
+            "ship",
+        ]
+        self.add_line("Station stats")
+        self.add_table(headers, stats)
+
+    @command("full_stats")
+    @swallow_args
+    def _full_stats(self):
+        self._clients()
+        self._companies()
+        self._economy()
+        self._vehicles()
+        self._stations()
+
     @command("client", "player")
     def _client(self, cmd, args_orig, args):
         if not self.connection.is_connected:
