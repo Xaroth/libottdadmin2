@@ -4,27 +4,59 @@
 #
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
-import errno
-import os
-import shlex
 import sys
-import textwrap
-import threading
-import time
-import traceback
-from collections import defaultdict
-from datetime import datetime, timedelta
-
+import os
+import warnings
 try:
     import urwid
 except ImportError as e:
     print >> sys.stderr, "Failed to import urwid: %s" % e
     print >> sys.stderr, "Please check if you have the urwid library installed."
     sys.exit(1)
+try:
+    import libottdadmin2
+except ImportError as e:
+    DNAME = os.path.abspath(os.path.dirname(__file__))
+    ROOTDIR = os.path.dirname(DNAME)
+    if os.path.exists(os.path.join(ROOTDIR, 'libottdadmin2')):
+        warnings.warn("libottdadmin2 is not installed; "
+            "attempting to work around by path insertion", RuntimeWarning)
+        sys.path.append(ROOTDIR)
+        try:
+            import libottdadmin2
+        except ImportError as ex:
+            print >> sys.stderr, "Failed to import libottdadmin2: %s" % e
+            sys.exit(1)
+    else:
+        print >> sys.stderr, "Failed to import libottdadmin2: %s" % e
+        sys.exit(1)
 
+def except_hook(extype, exobj, extb, manual=False):
+    if not manual:
+        try:
+            main_window.quit(exit=False)
+        except NameError:
+            pass
+        message = "An error occured:\n%(divider)s\n%(traceback)s\n"\
+            "%(exception)s\n%(divider)s" % {
+                "divider": 20*"-",
+                "traceback": "".join(traceback.format_tb(extb)),
+                "exception": extype.__name__+": "+str(exobj)
+            }
+        print >> sys.stderr, message
+
+from collections import defaultdict
+from datetime import datetime, timedelta
+import errno
 from libottdadmin2.trackingclient import *
 from libottdadmin2.enums import *
 from libottdadmin2.constants import *
+import os
+import shlex
+import textwrap
+import threading
+import time
+import traceback
 
 from optparse import OptionParser
 
@@ -37,23 +69,49 @@ parser.add_option("-P", "--port", dest="port", type="int", default=3977,
                   help="use PORT as port (default: 3977)", metavar="PORT")
 parser.add_option("-p", "--password", dest="password", default=None,
                   help="use PASS as password", metavar="PASS")
+parser.add_option("-i", "--interval", dest="timeout", default=0.1, type="float",
+                  help="use X as polling interval (Advanced use only)", metavar="X")
 
-class ExtendedEdit (urwid.Edit):
-    hide_edit_text = False
+def swallow_args(func):
+    def _inner(self, *args):
+        return func(self)
+    return _inner
 
-    def set_hide (self, s):
-        if type (s) != bool:
-            raise TypeError("Wrong type for s, bool required")
-        self.hide_edit_text = s
+def command(*items):
+    def __inner(func):
+        func.commands = items
+        return func
+    return __inner
+
+class MaskableEdit (urwid.Edit):
+    _hide_text = False
+    _text_mask = "*"
+
+    @property
+    def text_mask(self):
+        return self._text_mask
+    @text_mask.setter
+    def text_mask(self, value):
+        self._text_mask = value
+        self._invalidate()
+
+    @property
+    def hide_text(self):
+        return self._hide_text
+    @hide_text.setter
+    def hide_text(self, value):
+        if type(s) != bool:
+            raise TypeError("Wrong type, bool required")
+        self._hide_text = value
+        self._invalidate()
 
     def get_text (self):
         text = urwid.Edit.get_text(self)
-        if self.hide_edit_text:
+        if self._hide_text:
             text[0] = len(text[0])*"*"
         return text
 
-class ExtendedListBox(urwid.ListBox):
-
+class ScrollingListBox(urwid.ListBox):
     __metaclass__ = urwid.MetaSignals
     signals = ["set_auto_scroll"]
 
@@ -67,10 +125,17 @@ class ExtendedListBox(urwid.ListBox):
             return
         self._auto_scroll = value
         urwid.emit_signal(self, "set_auto_scroll", value)
+        self._invalidate()
+
+    def _invalidate(self, *args, **kwargs):
+        focus_widget, focus_pos = self.body.get_focus()
+        if focus_widget:
+            self.scroll_to_bottom()
+        super(ScrollingListBox, self)._invalidate(*args, **kwargs)
 
     def __init__(self, body):
         urwid.ListBox.__init__(self, body)
-        self.auto_scroll = True
+        self._auto_scroll = True
 
     def switch_body(self, body):
         if self.body:
@@ -100,367 +165,304 @@ class ExtendedListBox(urwid.ListBox):
             self.set_focus(len(self.body)-1)
             self.set_focus_valign("bottom")
 
-
-def except_hook(extype, exobj, extb, manual=False):
-    if not manual:
-        try:
-            main_window.quit(exit=False)
-        except NameError:
-            pass
-        message = "An error occured:\n%(divider)s\n%(traceback)s\n"\
-            "%(exception)s\n%(divider)s" % {
-                "divider": 20*"-",
-                "traceback": "".join(traceback.format_tb(extb)),
-                "exception": extype.__name__+": "+str(exobj)
-            }
-        print >> sys.stderr, message
+class ConnectionState(EnumHelper):
+    DISCONNECTED            = 0x00
+    CONNECTING              = 0x01
+    AUTHENTICATING          = 0x02
+    CONNECTED               = 0x03
+    DISCONNECTING           = 0x04
 
 class OpenTTDAdmin(object):
-    running = True
-    def __init__(self, options, args):
-        self.options = options
-        self.args = args
+    _running                = True
+    _state                  = ConnectionState.DISCONNECTED
 
-        self.connection = None
+    _connection             = None
+    _poll_interval          = 0.1
 
-        self.commands = {}
-        self.commands['connect'] = self.cmd_connect
-        self.commands['disconnect'] = self.cmd_disconnect
-        self.commands['set'] = self.cmd_set
-        self.commands['say'] = self.cmd_say
-        self.commands['msg'] = self.cmd_msg
-        self.commands['cmsg'] = self.cmd_cmsg
-        self.commands['rcon'] = self.cmd_rcon
-        self.commands['clients'] = self.cmd_clients
-        self.commands['companies'] = self.cmd_companies
-        self.commands['help'] = self.cmd_help
+    _output_list            = None
+    _body                   = None
+    _divider                = None
+    _current_markup         = None
+    _footer                 = None
+    _context                = None
 
-        self.commands['ping'] = self.cmd_ping
+    _history                = None
+    _hist_index             = -1
+    _hist_last              = None
 
-    palette = [
+    command_handlers        = {}
+    debug                   = False
+
+    _ui                     = None
+    _main_loop              = None
+
+    _palette                = [
         ('divider', 'black', 'dark cyan', 'standout'),
         ('divider-hilight', 'dark magenta', 'dark cyan', 'standout'),
         ('text','light gray', 'default'),
         ('error', 'light red', 'default'),
+        ('notice', 'light green', 'default'),
         ('bold_text', 'light gray', 'default', 'bold'),
         ("body", "text"),
         ("footer", "text"),
         ("header", "text"),
     ]
 
-    def _init_widgets(self):
-        self.generic_output_walker = urwid.SimpleFocusListWalker([])
-        self.body       = ExtendedListBox(self.generic_output_walker)
-        self.divider    = urwid.Text("")
-        self.footer     = ExtendedEdit(">>> ")
+    ERROR_MESSAGES          = {
+        "NOT_CONNECTED":    "We are not connected",
+    }
 
-        #urwid.connect_signal(self.body, "set_auto_scroll", self.handle_body_auto_scroll)
+    @property
+    def state(self):
+        return self._state
+    @state.setter
+    def state(self, value):
+        invalidate = self._state != value
+        self._state = value
+        if invalidate:
+            self.invalidate()
 
-        self.footer     = urwid.AttrWrap(self.footer, "footer")
-        self.body       = urwid.AttrWrap(self.body, "body")
-        self.divider    = urwid.AttrWrap(self.divider, "divider")
+    @property
+    def running(self):
+        return self._running
 
-        self.footer.set_wrap_mode("space")
+    @property
+    def connection(self):
+        return self._connection
 
-        self.context    = urwid.Frame(self.body, footer = self.divider)
-        self.context    = urwid.Frame(self.context, footer = self.footer)
+    @swallow_args
+    def poll(self):
+        self._main_loop.set_alarm_in(self._poll_interval, self.poll)
+        if not self.running:
+            return
+        try:
+            self.connection.poll()
+        except IOError as e:
+            if e.errno == errno.EINTR:
+                pass
+            else:
+                raise
+        if self.connection.is_connected == False:
+            self.state = ConnectionState.DISCONNECTED
 
-        self.context.set_focus("footer")
+    @swallow_args
+    def _connected(self):
+        self.state = ConnectionState.AUTHENTICATING
+        self.add_notice("Connected, Authenticating")
 
-    def _init_ui(self):
-        self.ui = urwid.raw_display.Screen()
-        self.ui.register_palette(self.palette)
+    def _protocol(self, protocol):
+        self.state = ConnectionState.CONNECTED
+        self.add_notice("Authentication successful, server is running network version %d" % protocol.version)
 
-        self._init_widgets()
-        self.update_divider()
+    @swallow_args
+    def _disconnected(self):
+        self.state = ConnectionState.DISCONNECTED
+        self.add_notice("Disconnected from server")
 
-    def update_divider(self, *args, **kwargs):
-        markup = []
-        if self.connection and self.connection.is_connected:
+    def _pong(self, start, end, taken):
+        self.add_notice("PONG] response took: %s" % str(taken))
+
+    def _rcondata(self, result, colour):
+        return self.add_chat(origin = "RCON", message = result)
+
+    def _chat(self, client, action, destType, clientID, message, data):
+        name = str(clientID)
+        company = None
+        if client != clientID:
+            company = self.connection.companies.get(client.play_as, None)
+            name = client.name
+        if company:
+            company = company.name
+        if action == Action.CHAT:
+            self.add_chat(origin = name, message = message)
+        elif action == Action.CHAT_COMPANY:
+            self.add_chat(origin = name, target = company or ' ', message = message)
+        elif action == Action.CHAT_CLIENT:
+            if data in self.connection.clients:
+                target = self.connection.clients[data].name 
+            else:
+                target = None
+            self.add_chat(origin = name, target = target or ' ', message = message)
+
+    def _clientjoin(self, client):
+        if isinstance(client, (long, int)):
+            return
+        self.add_chat(origin = client.name, is_action = True, message = "joined the game")
+
+    def _clientupdate(self, old, client, changed):
+        if 'play_as' in changed:
+            company = self.connection.companies.get(client.play_as)
+            if company:
+                self.add_chat(origin = client.name, is_action = True, message = "joined company '%s'" % company.name)
+        if 'name' in changed:
+            self.add_chat(origin = old.name, is_action = True, message = "is now known as %s" % client.name)
+
+    def _clientquit(self, client, errorcode):
+        if isinstance(client, (long, int)):
+            return
+        self.add_chat(origin = client.name, is_action = True, message = "left the game")
+
+    def _init_widgets_(self):
+        self._output_list   = urwid.SimpleFocusListWalker([])
+        self._body          = urwid.AttrWrap(ScrollingListBox(self._output_list), "body")
+        self._divider       = urwid.AttrWrap(urwid.Text(""), "divider")
+        self._footer        = urwid.AttrWrap(MaskableEdit(">>> "), "footer")
+
+        self._footer.set_wrap_mode("space")
+
+        self._context       = urwid.Frame(
+                                    urwid.Frame(
+                                        self._body, 
+                                        footer = self._divider
+                                    ),
+                                    footer = self._footer
+                                )
+        self._context.set_focus("footer")
+
+    def _init_ui_(self):
+        self._ui            = urwid.raw_display.Screen()
+        self._ui.register_palette(self._palette)
+
+    def _init_connection_(self):
+        conn = self._connection = TrackingAdminClient()
+
+        conn.events.connected   += self._connected
+        conn.events.protocol    += self._protocol
+        conn.events.datechanged += self.invalidate
+        conn.events.new_map     += self.invalidate
+        conn.events.disconnected += self._disconnected
+        conn.events.pong        += self._pong
+
+        conn.events.chat        += self._chat
+        conn.events.rcon        += self._rcondata
+
+        conn.events.clientjoin  += self._clientjoin
+        conn.events.clientupdate += self._clientupdate
+        conn.events.clientquit  += self._clientquit
+
+    def _init_handlers_(self):
+        self._history = []
+        self.command_handlers = {}
+        for func in dir(self):
+            if func.startswith('__'):
+                continue
+            func = getattr(self, func)
+            if not hasattr(func, 'commands'):
+                continue
+            for command in func.commands:
+                self.command_handlers[command] = func
+
+
+    def __init__(self, options, args):
+        self.options = options
+        self.args = args
+
+        self._init_connection_()
+
+        self._init_ui_()
+        self._init_widgets_()
+        self._init_handlers_()
+
+    def validate_options(self):
+        return {
+            'password':     self.options.password is not None,
+            'host':         self.options.host is not None,
+            'port':         self.options.port is not None,
+            'timeout':      self.options.timeout is not None,
+        }
+        
+    @command("connect")
+    @swallow_args
+    def connect(self):
+        if self.connection.is_connected:
+            # warn connected
+            return
+        validated_options = self.validate_options()
+        if not all(validated_options.values()):
+            if not validated_options['password']:
+                self.add_error("Password not set, run with --password=<PASSWORD> or use 'set password <PASSWORD>'")
+            elif not validated_options['host']:
+                self.add_error("Host not set, run with --host=<HOST> or use 'set host <HOST>'")
+            elif not validated_options['port']:
+                self.add_error("Port not set, run with --port=<PORT> or use 'set port <PORT>'")
+            elif not validated_options['timeout']:
+                self.add_error("Interval timeout not set")
+            return
+        self._connection = self._connection.copy()
+        self._connection.configure(
+            host = self.options.host,
+            port = self.options.port,
+            password = self.options.password,
+            timeout = self.options.timeout or 0.1,
+            )
+        self.add_notice("Connecting to '%s:%d'" % (self._connection.host, self._connection.port))
+        self.state = ConnectionState.CONNECTING
+        if not self._connection.connect():
+            self.add_error("Unable to connect.")
+            self.add_exception(self._connection._last_error)
+
+    @command("disconnect")
+    @swallow_args
+    def disconnect(self):
+        if self.connection.is_connected:
+            self.add_notice("Disconnecting")
+            self.state = ConnectionState.DISCONNECTING
+            self._connection.disconnect()
+        else:
+            self.add_error("NOT_CONNECTED")
+
+    @swallow_args
+    def invalidate(self):
+        markup = ["%8s ] " % datetime.now().strftime("%H:%M:%S")]
+        if self.state == ConnectionState.DISCONNECTED:
+            markup.append("Disconnected")
+        elif self.state == ConnectionState.DISCONNECTING:
+            markup.append("Disconnecting...")
+        elif self.state == ConnectionState.CONNECTING:
+            markup.append("Connecting to: ")
+        elif self.state == ConnectionState.CONNECTED:
             markup.append("Connected to: ")
-            markup.append(("divider-hilight", "%s:%d" % (self.connection.host, self.connection.port)))
-            markup.append(" ")
+        elif self.state == ConnectionState.AUTHENTICATING:
+            markup.append("Authenticating with: ")
+        if self.state in (ConnectionState.CONNECTING, ConnectionState.CONNECTED, ConnectionState.AUTHENTICATING):
+            markup.append(("divider-hilight", "%s:%d " % (self.connection.host, self.connection.port)))
+
+        if self.state == ConnectionState.CONNECTED:
             if self.connection.serverinfo.version:
                 markup.append("(")
                 markup.append(("divider-hilight", self.connection.serverinfo.version))
                 markup.append(") ")
             if self.connection.date:
                 markup.append("Date: ")
-                markup.append("%(day)d/%(month)d/%(year)d" % {
+                markup.append(("divider-hilight", "%(day)d/%(month)d/%(year)d " % {
                     'day': self.connection.date.day,
                     'month': self.connection.date.month,
                     'year': self.connection.date.year,
-                    })
+                    }))
             if self.connection.serverinfo.dedicated:
-                markup.append(", ")
-                amount = (len(self.connection.clients) - (1 if self.connection.serverinfo.dedicated else 0))
-                markup.append(("divider-hilight", str(amount)))
-                markup.append(" player%s" % ("s" if amount != 1 else ""))
-        else:
-            markup.append("Not connected")
-        if not markup:
-            self.divider.set_text("")
-        else:
-            self.divider.set_text(markup)
+                amt = (len(self.connection.clients) - (1 if self.connection.serverinfo.dedicated else 0))
+                companies = len(self.connection.companies) - 1
+                markup.append("[")
+                markup.append(("divider-hilight", "%d" % amt))
+                markup.append(" players, ")
+                markup.append(("divider-hilight", "%d" % companies))
+                markup.append(" compan%s]" % ("y" if companies == 1 else "ies"))
 
-    def check_settings(self, verbose = True):
-        if self.options.password is None:
-            if verbose:
-                self.append_error("You have no password specified, run with --password=<password> or use 'set password <password>'.")
-            return False
-        if self.options.host is None:
-            if verbose:
-                self.append_error("You have no host specified, run with --host=<host> or use 'set host <host>'.")
-            return False
-        if self.options.port is None:
-            if verbose:
-                self.append_error("You have no port specified, run with --port=<port> or use 'set port <port>'.")
-            return False
-        return True
-
-    def poll(self, *args):
-        if self.connection:
-            try:
-                self.connection.poll()
-            except IOError as e:
-                if e.errno == errno.EINTR:
-                    pass
-                else:
-                    raise
-        self.main_loop.set_alarm_in(0.01, self.poll)
-
-    def _attach_events(self):
-        conn = self.connection
-        conn.events.connected       += self.update_divider
-        conn.events.disconnected    += self.update_divider
-        conn.events.datechanged     += self.update_divider
-        conn.events.protocol        += self.update_divider
-        conn.events.new_map         += self.update_divider
-
-        conn.events.pong            += self.on_pong
-        conn.events.chat            += self.on_chat
-        conn.events.rcon            += self.on_rcon
-        #conn.events.console         += self.on_console
-
-        conn.events.clientjoin      += self.on_clientjoin
-        conn.events.clientquit      += self.on_clientquit
-        conn.events.clientupdate    += self.on_clientupdate
-
-    def _detach_events(self):
-        conn = self.connection
-        conn.events.connected       -= self.update_divider
-        conn.events.disconnected    -= self.update_divider
-        conn.events.datechanged     -= self.update_divider
-        conn.events.protocol        -= self.update_divider
-        conn.events.new_map         -= self.update_divider
-
-        conn.events.pong            -= self.on_pong
-        conn.events.chat            -= self.on_chat
-        conn.events.rcon            -= self.on_rcon
-        #conn.events.console         -= self.on_console
-
-        conn.events.clientjoin      -= self.on_clientjoin
-        conn.events.clientquit      -= self.on_clientquit
-        conn.events.clientupdate    -= self.on_clientupdate
-
-    def cmd_ping(self, args):
-        if self.connection is None or self.connection.is_connected == False:
-            self.append_error("We are not connected.")
-            return
-        self.connection.ping()
-
-    def on_pong(self, start, end, taken):
-        self.append("PONG] response took: %s" % str(taken))
-
-    def cmd_help(self, args):
-        self.append("Available commands:")
-        commands = ' | '.join(self.commands.keys())
-        for line in textwrap.wrap(commands):
-            line = line.strip('|').strip()
-            self.append(line)
-
-    def cmd_clients(self, args):
-        if self.connection is None or self.connection.is_connected == False:
-            self.append_error("We are not connected.")
-            return
-        self.append("%s Clients %s" % ('-' * 16, '-' * 16))
-        format = "%(clientID)3s | %(name)16s | %(hostname)16s"
-        for id, client in sorted(self.connection.clients.items()):
-            self.append(format % client)
-
-    def cmd_companies(self, args):
-        if self.connection is None or self.connection.is_connected == False:
-            self.append_error("We are not connected.")
-            return
-
-        players = defaultdict(list)
-        for id, client in self.connection.clients.items():
-            players[client['play_as']].append(client)
-
-        self.append("%s Companies %s" % ('-' * 15, '-' * 15))
-        format  = "%(companyID)3s | %(name)16s | %(manager)16s"
-        pformat = " => | %(name)s [#%(clientID)s]"
-        for id, company in sorted(self.connection.companies.items()):
-            self.append(format % company)
-            for client in players[id]:
-                self.append(pformat % client)
-
-    def cmd_set(self, args):
-        if len(args) != 2:
-            self.append_error("set requires 2 arguments: set <name> <value>")
-            return
-        key = args[0].lower()
-        val = args[1]
-        if key not in ('host', 'port', 'password'):
-            self.append_error("Can only set host, port or password")
-            return
-        if key == "host":
-            self.options.host = val
-            self.append("Host set to %s" % val)
-        elif key == "port":
-            try:
-                val = int(val)
-                self.options.port = val
-                self.append("Port set to %d" % val)
-            except ValueError:
-                self.append_error("%s is not a valid port number" % val)
-                return
-        elif key == "password":
-            self.options.password = val
-            self.append("Password set.")
-
-    def on_clientjoin(self, data, is_join_full):
-        if not is_join_full:
-            return
-        self.append_chat(origin = data['name'], type="JOIN", message="Joined the game")
-
-    def on_clientquit(self, id, data, error):
-        if error is not False:
-            return
-        if not data.keys():
-            self.append_chat(origin = "ClientID:#%s" % id, type="QUIT", message="Disconnected")
-        else:
-            self.append_chat(origin = data['name'], type="QUIT", message="Disconnected")
-
-    def on_clientupdate(self, old, new):
-        if old['name'] != new['name']:
-            self.append_chat(origin = old['name'], type="UPDATE", message="Renamed to '%s'" % new['name'])
-        if old['play_as'] != new['play_as']:
-            oldc = self.connection.companies.get(old['play_as'])
-            newc = self.connection.companies.get(new['play_as'])
-            if not oldc or not newc:
-                return
-            self.append_chat(origin = old['name'], type="UPDATE", message="Left team '%s' to join '%s'" % (oldc['name'], newc['name']))
-
-    def on_chat(self, client, action, destType, clientID, message, data):
-        name = str(clientID)
-        if client != clientID:
-            name = client.name
-        if action == Action.CHAT:
-            self.append_chat(origin = name, type="CHAT", message=message)
-        elif action == Action.CHAT_COMPANY:
-            self.append_chat(origin = name, type="TEAM", message=message)
-        elif action == Action.CHAT_CLIENT:
-            self.append_chat(origin = name, type="CLIENT", message=message)
-
-    def on_rcon(self, result, colour):
-        self.append_chat(origin = None, type="RCON", message=result)
-
-    def on_console(self, origin, message):
-        self.append_chat(origin = origin, type="CONSOLE", message=message)
-
-    def cmd_say(self, original, args):
-        if self.connection is None or self.connection.is_connected == False:
-            self.append_error("We are not connected.")
-            return
-
-        for part in textwrap.wrap(original, NETWORK_CHAT_LENGTH):
-            self.connection.send_packet(AdminChat, action = Action.CHAT, destType = DestType.BROADCAST, clientID = 0, message = part)
-        self.append_chat(origin="to: ALL", type="CHAT", message = original)
-
-    def cmd_msg(self, original, args):
-        self.send_directed('msg', Action.CHAT_CLIENT, DestType.CLIENT, original, self.connection.clients)
-
-    def cmd_cmsg(self, original, args):
-        self.send_directed('msg', Action.CHAT_COMPANY, DestType.TEAM, original, self.connection.companies)
-
-    def send_directed(self, cmdname, chattype, cmdtype, original, pool):
-        if self.connection is None or self.connection.is_connected == False:
-            self.append_error("We are not connected.")
-            return
-        parts = original.split(' ', 1)
-        if len(parts) < 2:
-            self.append_error("Format: %s <person> <text>" % cmdname)
-            return
-        to = None
-        for index, item in pool.items():
-            if item['name'] == parts[0]:
-                to = index
-                break
-        if to is None:
-            try:
-                to = int(parts[0])
-                if to not in pool:
-                    to = None
-            except:
-                pass
-        if to is None:
-            self.append_error("Cannot find a target by the name (or id) of '%s'" % parts[0])
-            return
-        for part in textwrap.wrap(parts[1], NETWORK_CHAT_LENGTH - 1):
-            self.connection.send_packet(AdminChat, action = chattype, destType = cmdtype, clientID = to, message = part)
-        self.append_chat(origin="<to: %s" % pool[to]['name'], type=DestType.get_name(cmdtype), message = parts[1])
-
-    def cmd_rcon(self, original, args):
-        if len(original) >= NETWORK_RCONCOMMAND_LENGTH:
-            self.append_error("RCON Command too long (%d/%d)" % (len(original), NETWORK_RCONCOMMAND_LENGTH))
-            return
-        self.connection.send_packet(AdminRcon, command = original)
-        self.append_chat(origin=None, type="RCON", message=original)
-
-    def cmd_connect(self, args):
-        self.connect()
-
-    def connect(self, verbose = True):
-        if self.connection is not None:
-            if self.connection.is_connected:
-                if verbose:
-                    self.append_error("Cannot connect, we're already connected.")
-                return
-            self.connection = None
-        if not self.check_settings(verbose):
-            return
-        if not self.connection:
-            self.connection = TrackingAdminClient()
-            self._attach_events()
-        else:
-            self.connection = self.connection.reset()
-        self.connection.configure(
-            host = self.options.host,
-            port = self.options.port,
-            password = self.options.password,
-            timeout = 0.1)        
-        self.append("Connecting to: %(host)s:%(port)d" % {'host': self.options.host, 'port': self.options.port})
-        self.connection.connect()
-
-    def cmd_disconnect(self, *args):
-        if self.connection and self.connection.is_connected:
-            self.append("Disconnecting")
-            self.connection.disconnect()
-        else:
-            self.append_error("We are not connected")
-
-    def main(self):
-        self.running = True
-        self._init_ui()
-
-        self.ui.run_wrapper(self.run)
+        if markup != self._current_markup:
+            if not markup:
+                self._divider.set_text("")
+            else:
+                self._divider.set_text(markup)
+        self._current_markup = markup
 
     def draw(self):
-        self.main_loop.draw_screen()
+        self._main_loop.draw_screen()
 
-    def run(self):       
+    def main(self):
+        self._running = True
+        self._ui.run_wrapper(self.run)
 
+    def run(self):
         def redraw(*args):
             self.draw()
             invalidate.locked = False
@@ -470,37 +472,153 @@ class OpenTTDAdmin(object):
             invalidate_old(*args, **kwargs)
             if not invalidate.locked:
                 invalidate.locked = True
-                self.main_loop.set_alarm_in(0, redraw)
+                self._main_loop.set_alarm_in(0, redraw)
         invalidate.locked = False
         urwid.canvas.CanvasCache.invalidate = classmethod(invalidate)
 
         def do_input(key):
             if not self.running:
                 raise urwid.ExitMainLoop()
-            self.keypress(self.ui.get_cols_rows(), key)
-
-        self.main_loop = urwid.MainLoop(self.context, screen=self.ui, handle_mouse=False, unhandled_input=do_input)
-        self.poll()
-
-        self.connect(False)
+            self.keypress(self._ui.get_cols_rows(), key)
+        self._main_loop = urwid.MainLoop(self._context, screen=self._ui, handle_mouse=False, unhandled_input=do_input)
+        
+        self._main_loop.set_alarm_in(0.1, self.poll)
+        self._main_loop.set_alarm_in(0.2, self.connect)
 
         try:
-            self.main_loop.run()
+            self._main_loop.run()
         except KeyboardInterrupt:
             self.quit()
 
+    @command("quit")
+    @swallow_args
+    def _quit(self):
+        self.quit(True)
+
     def quit(self, exit=True):
-        self.running = False
+        self._running = False
+        if self.connection.is_connected:
+            self.disconnect()
         if exit:
             sys.exit(0)
 
-    def handle_command(self):
-        data = self.footer.get_edit_text()
-        self.footer.set_edit_text(" "*len(data))
-        self.footer.set_edit_text("")
-        if len(data) < 1:
+    def add_debug(self, text):
+        if self.debug:
+            self.add_line(text)
+
+    def add_line(self, text, display_type = "text", display_time = None, align="left"):
+        return self.add_raw(urwid.AttrWrap(urwid.Text(text, align=align), display_type), display_time = display_time)
+
+    def add_error(self, text, display_time = None):
+        if text in self.ERROR_MESSAGES:
+            text = self.ERROR_MESSAGES[text]
+        return self.add_line(text, "error", display_time = display_time)
+
+    def add_exception(self, exception, display_time = None):
+        return self.add_line(str(exception), "error", display_time = display_time or "error")
+
+    def add_notice(self, text, display_time = None):
+        return self.add_line(text, "notice", display_time = display_time)
+
+    def add_table(self, header, values, center_header = False):
+        def get_max(x):
+            return max([len(str(item[x])) or 1 for item in values] + [len(x),])
+        columns = dict([(item, get_max(item)) for item in header])
+        total_width = float(sum(columns.values()))
+        columns = dict([(item, int((val / total_width) * 100) ) for item, val in columns.items()])
+
+        lines = []
+        lines.append([('weight', columns[item], urwid.Text(item, align='center' if center_header else 'left')) for item in header])
+
+        lines.extend([
+            [('weight', columns[item], urwid.Text(str(line[item]) or " ")) for item in header]
+            for line in values])
+        for line in lines:
+            self.add_raw(urwid.Columns(line, dividechars = 1))
+
+    def add_chat(self, origin, message, target = None, origin_type = "text", target_type = "notice", is_action = False):
+        markup = []
+        if is_action:
+            markup.append("* ")
+        markup.append((origin_type, origin))
+        if target:
+            markup.append(("bold_text", "@"))
+            markup.append((target_type, target))
+        if not is_action:
+            markup.append(("bold_text", "> "))
+        else:
+            markup.append(" ")
+        markup.append(("text", message))
+        if is_action:
+            markup.append(" *")
+        return self.add_raw(urwid.Text(markup))
+
+    def add_raw(self, item, display_time = None):
+        line = urwid.Columns([
+                ('pack', urwid.AttrWrap(
+                                urwid.Text("%8s ]" % datetime.now().strftime("%H:%M:%S")), 
+                                display_time or "text")),
+                ('weight', 100, item)
+            ], dividechars = 1)
+        self._output_list.append(line)
+
+    def history_scroll(self, direction = 1):
+        self.add_debug("history_scroll: %d" % direction)
+        if len(self._history) < 1:
             return
-        parts = data.split(' ', 1)
+        index = self._hist_index + direction
+        self.add_debug("index: %d" % index)
+        if index < 0:
+            index = -1
+            if self._hist_index == 0:
+                self.set_edit(self._hist_last or "")
+                self._hist_last = None
+            return
+        elif index >= len(self._history):
+            index = len(self._history) - 1
+        try:
+            item = self._history[index]
+        except:
+            self.add_debug("no item at index, aborting")
+            return
+        if self._hist_index == -1:
+            self.add_debug("setting last item.")
+            self._hist_last = self.clear_edit()
+        self.set_edit(item)
+
+    def keypress(self, size, key):
+        if key in ("page up", "page down"):
+            self._body.keypress(size, key)
+        elif key == "enter":
+            self.handle_command()
+        elif key == "up":
+            self.history_scroll()
+        elif key == "down":
+            self.history_scroll(-1)
+        else:
+            self._context.keypress(size, key)
+
+    def set_edit(self, text):
+        self.clear_edit()
+        self._footer.set_edit_text(text)
+        self._footer.set_edit_pos(len(text))
+
+    def clear_edit(self):
+        data = self._footer.get_edit_text()
+        self._footer.set_edit_text(" "*len(data))
+        self._footer.set_edit_text("")
+        return data
+
+    def handle_command(self):
+        line = self.clear_edit()
+        self._history.insert(0, line)
+        self._hist_index = -1
+        self.do_cmd(line)
+
+    def do_cmd(self, line):
+        if len(line) < 1:
+            return
+        parts = line.split(' ', 1)
         if len(parts) < 1:
             return
         command = parts[0]
@@ -508,58 +626,233 @@ class OpenTTDAdmin(object):
         if len(parts) > 1:
             args_orig = parts[1]
         args = shlex.split(args_orig)
-
-        if command.lower() in self.commands:
-            try:
-                self.commands[command.lower()](original = args_orig, args = args)
-            except Exception as e:
-                try:
-                    self.commands[command.lower()](args)
-                except Exception as e2:
-                    self.append_error(str(e))
-                    self.append_error(str(e2))
-
-    def append_chat(self, origin, type, message):
-        cols = []
-        if type is not None:
-            cols.append( ('pack', urwid.Text("%8s]" % type)))
-        if origin is not None:
-            cols.append( ('pack', urwid.Text("%10s>" % origin)))
-        cols.append( ('weight', 100, urwid.Text(message)) )
-        self.append_raw(urwid.Columns(cols, dividechars=1))
-
-    def append(self, text):
-        self.append_raw(urwid.Text(text))
-
-    def append_error(self, text):
-        self.append_raw(urwid.AttrWrap(urwid.Text(text), "error"))
-
-    def append_raw(self, item):
-        line = urwid.Columns([
-                ('pack', urwid.Text("%8s ]" % datetime.now().strftime('%H:%M:%S'))),
-                ('weight', 100, item)
-            ], dividechars = 1)
-        self.generic_output_walker.append(line)
-        self.body.scroll_to_bottom()
-
-    def keypress(self, size, key):
-        if key in ("page up", "page down"):
-            self.body.keypress(size, key)
-        elif key == "enter":
-            self.handle_command()
-        elif key == "up":
-            pass
-        elif key == "down":
-            pass
+        if command in self.command_handlers:
+            self.command_handlers[command](command, args_orig, args)
         else:
-            self.context.keypress(size, key)
+            self.add_error("Unknown command: '%s'" % command)
 
-if __name__ == "__main__":
-    global main_window
+    @command("help", "?")
+    @swallow_args
+    def _help(self):
+        commands = self.command_handlers.keys()
+        self.add_notice("Available commands:")
+        self.add_line(", ".join(commands))
+
+    @command("set")
+    def _set(self, cmd, args_orig, args):
+        if len(args) != 2:
+            self.add_error("`%(name)s` requires 2 arguments: `%(name)s <name> <value>`" % {'name': cmd})
+            return
+        key = args[0].lower()
+        val = args[1]
+        if key not in ('host', 'port', 'password', 'debug'):
+            self.add_error("`%(name)s` can only set host, port or password" % {'name': cmd})
+            return
+        if key == "host":
+            self.options.host = val
+            self.add_notice("Host set to '%s'" % val)
+        elif key == "port":
+            try:
+                val = int(val)
+                if val > 65535 or val <= 0:
+                    raise ValueError()
+                self.options.port = val
+                self.add_notice("Port set to '%d'" % val)
+            except ValueError:
+                self.add_error("'%s' is not a valid port number (1-65535)" % str(val))
+        elif key == "password":
+            self.options.password = val
+            self.add_notice("Password set")
+        elif key == "debug":
+            if val.lower() in ("true", "1", "on"):
+                self.debug = True
+                self.add_notice("Debug enabled")
+            elif val.lower() in ("false", "0", "off"):
+                self.debug  = False
+                self.add_notice("Debug disabled")
+
+    @command("clients", "players")
+    @swallow_args
+    def _clients(self):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        clientlist = [x.to_dict() for x in self.connection.clients.values()]
+        headers = [
+            "id",
+            "name", 
+            "hostname", 
+            "play_as",
+        ]
+        self.add_line("Client list", align="center")
+        self.add_table(headers, clientlist)
+
+    @command("companies", "teams")
+    @swallow_args
+    def _companies(self):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        companylist = [x.to_dict() for x in self.connection.companies.values()]
+        headers = [
+            "id",
+            "name",
+            "manager",
+            "ai",
+            "passworded",
+            "startyear",
+        ]
+        self.add_line("Company list", align="center")
+        self.add_table(headers, companylist)
+
+    @command("client", "player")
+    def _client(self, cmd, args_orig, args):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        if len(args) < 1:
+            return self._clients()
+        if args[0].lower() == 'list':
+            return self._clients()
+        clients = {}
+        for arg in args:
+            try:
+                arg = int(arg)
+                if arg not in self.connection.clients:
+                    raise ValueError()
+                clients[arg] = self.connection.clients[arg]
+            except ValueError:
+                self.add_debug("'%s' is not an int, or not a valid clientID" % arg)
+                matches = [x for _, x in self.connection.clients.items() if arg in x.name]
+                if len(matches) < 1:
+                    self.add_notice("No client matches: '%s'" % arg)
+                    continue
+                for item in matches:
+                    clients[item.id] = item
+        format = "%14s %s"
+        for item in clients.values():
+            data = item.to_dict()
+            company = self.connection.companies.get(item.play_as, None)
+            self.add_line("Player info")
+            for key in ('id', 'name', 'hostname', 'joindate'):
+                self.add_line(format % (key, data[key]))
+            if company:
+                self.add_line(format % ("company", company.name))
+
+    @command("company", "team")
+    def _company(self, cmd, arg_orig, args):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        if len(args) < 1:
+            return self._companies()
+        if args[0].lower() == 'list':
+            return self._companies()
+        companies = {}
+        for arg in args:
+            try:
+                arg = int(arg)
+                if arg not in self.connection.companies:
+                    raise ValueError()
+                companies[arg] = self.connection.companies[arg]
+            except ValueError:
+                arg = str(arg)
+                self.add_debug("'%s' is not an int, or not a valid companyID" % arg)
+                matches = [x for _,x in self.connection.companies.items() if arg in x.name]
+                if len(matches) < 1:
+                    self.add_notice("No company matches: '%s'" % arg)
+                    continue
+                for item in matches:
+                    companies[item.id] = item
+        format = "%14s %s"
+        for item in companies.values():
+            data = item.to_dict()
+            players = [x for _, x in self.connection.clients.items() if x.play_as == item.id]
+            economy = item.economy.to_dict()
+            vehicles = item.vehicles.to_dict()
+            stations = item.stations.to_dict()
+            self.add_line("Company info")
+            for key in ('id', 'name', 'manager', 'passworded', 'startyear', 'ai',):
+                self.add_line(format % (key, data[key]))
+            for key in ('money', ('currentLoan', 'current loan'), 'income'):
+                name = key
+                if isinstance(key, tuple):
+                    key, name = key
+                self.add_line(format % (name, economy[key]))
+            self.add_line("Vehicles")
+            for key in ('train', 'bus', 'lorry', 'plane', 'ship'):
+                self.add_line(format % (key, vehicles[key]))
+            self.add_line("Stations")
+            for key in ('train', 'bus', 'lorry', 'plane', 'ship'):
+                self.add_line(format % (key, stations[key]))
+            self.add_line("Players")
+            for player in players:
+                self.add_line(format % (player.id, player.name))
+
+    @command("ping")
+    @swallow_args
+    def _ping(self):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        self.connection.ping() 
+
+    @command("say", "bcast", "broadcast")
+    def _say(self, cmd, args_orig, args):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        for part in textwrap.wrap(args_orig, NETWORK_CHAT_LENGTH):
+            self.connection.send_packet(AdminChat, action = Action.CHAT, destType = DestType.BROADCAST, clientID = 0, message = part)
+        self.add_chat(origin="SERVER", message = args_orig)
+
+    @command("msg", "cmsg")
+    def _msg(self, cmd, args_orig, args):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        if cmd in ("msg",):
+            pool = self.connection.clients
+            action = Action.CHAT_CLIENT
+            desttype = DestType.CLIENT
+        elif cmd in ("cmsg",):
+            pool = self.connection.companies
+            action = Action.CHAT_COMPANY
+            desttype = DestType.TEAM
+        else:
+            return self.add_error("Invalid type")
+        parts = args_orig.split(' ', 1)
+        if len(parts) != 2:
+            return self.add_error("Usage: `%(cmd)s <target> <message>`" % {'cmd': cmd})
+        target, message = parts
+        target_name = None
+        try:
+            target = int(target)
+            if target not in pool:
+                raise ValueError()
+            else:
+                target_name = pool[target].name
+        except ValueError:
+            target = str(target)
+            matches = [x for _, x in pool if target == x.name]
+            if len(matches) > 1:
+                return self.add_error("Too many matches, please specify by ID")
+            elif not matches:
+                return self.add_error("No match found for '%s'" % target)
+            target = matches[0].id
+            target_name = matches[0].name
+        for part in textwrap.wrap(message, NETWORK_CHAT_LENGTH - 1):
+            self.connection.send_packet(AdminChat, action = action, destType = desttype, clientID = target, message = part)
+        self.add_chat(origin = "SERVER", target = target_name or ' ', message = message)
+
+    @command("rcon")
+    def _rcon(self, cmd, args_orig, args):
+        if not self.connection.is_connected:
+            return self.add_error("NOT_CONNECTED")
+        if len(args_orig) >= NETWORK_RCONCOMMAND_LENGTH:
+            return self.add_error("RCON Command too long (%d/%d)" % (len(args_orig), NETWORK_RCONCOMMAND_LENGTH))
+        self.connection.send_packet(AdminRcon, command = args_orig)
+        self.add_chat(origin = "RCON", message = args_orig)
+
+def main(klass = OpenTTDAdmin):
     options, args = parser.parse_args()
-
-    main_window = OpenTTDAdmin(options, args)
-
     sys.excepthook = except_hook
 
+    main_window = klass(options, args)
     main_window.main()
+
+if __name__ == "__main__":
+    main()
