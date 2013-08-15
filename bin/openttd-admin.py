@@ -734,7 +734,7 @@ class OpenTTDAdmin(object):
             "currentLoan",
             "income",
         ]
-        self.add_line("Economy stats")
+        self.add_line("Economy stats", align="center")
         self.add_table(headers, economylist)
 
     @command("vehicles")
@@ -750,7 +750,7 @@ class OpenTTDAdmin(object):
             "plane",
             "ship",
         ]
-        self.add_line("Vehicle stats")
+        self.add_line("Vehicle stats", align="center")
         self.add_table(headers, stats)
 
     @command("stations")
@@ -766,7 +766,7 @@ class OpenTTDAdmin(object):
             "plane",
             "ship",
         ]
-        self.add_line("Station stats")
+        self.add_line("Station stats", align="center")
         self.add_table(headers, stats)
 
     @command("full_stats")
