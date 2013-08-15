@@ -64,6 +64,9 @@ class MappingObject(object):
                 continue
             setattr(self, to, kwargs.get(key))
 
+    def to_dict(self):
+        return dict([(x, getattr(self, x, None)) for _, x in self._mapping])
+
     def clone(self):
         obj = self.__class__()
         obj.__dict__.update(self.__dict__)
@@ -461,6 +464,7 @@ class TrackingAdminClient(AdminConnection):
     def _server_chat(self, **kwargs):
         data = dict(kwargs.items())
         client = self.clients.get(data['clientID'], data['clientID'])
+        data['client'] = client
         self.events.chat(**data)
 
     @handles_packet(ServerRcon)
