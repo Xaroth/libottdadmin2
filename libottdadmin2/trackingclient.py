@@ -168,7 +168,9 @@ class TrackingEvents(object):
 
         self.chat           = Event()
         self.rcon           = Event()
+        self.rconend        = Event()
         self.console        = Event()
+        self.cmdlogging     = Event()
 
         self.pong           = Event()
 
@@ -471,6 +473,15 @@ class TrackingAdminClient(AdminConnection):
     def _server_rcon(self, result, colour):
         self.events.rcon(result, colour)
 
+    @handles_packet(ServerRconEnd)
+    def _server_rcon_end(self, command):
+        self.events.rconend(command)
+
     @handles_packet(ServerConsole)
     def _server_console(self, message, origin):
         self.events.console(message, origin)
+
+    @handles_packet(ServerCmdLogging)
+    def _server_cmd_logging(self, **kwargs):
+        data = dict(kwargs.items())
+        self.events.cmdlogging(**data)
