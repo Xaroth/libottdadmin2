@@ -200,15 +200,18 @@ class AdminConnection(socket.socket, LoggableObject):
 
         Note that all packets received cause the packet_recv event to fire.
         """
-        plen = self.recv(self.format_packetlen.size)
-        if plen is None or len(plen) < self.format_packetlen.size:
-            return self.force_disconnect(can_retry = True)
-        plen = self.format_packetlen.unpack_from(plen)[0]
-        data = self.recv(plen - self.format_packetlen.size)
-        if data is None or len(data) < (plen - self.format_packetlen.size):
-            return self.force_disconnect(can_retry = True)
-        packetID = self.format_packetid.unpack_from(data)[0]
-        data = data[self.format_packetid.size:]
+        try:
+            plen = self.recv(self.format_packetlen.size)
+            if plen is None or len(plen) < self.format_packetlen.size:
+                return self.force_disconnect(can_retry = True)
+            plen = self.format_packetlen.unpack_from(plen)[0]
+            data = self.recv(plen - self.format_packetlen.size)
+            if data is None or len(data) < (plen - self.format_packetlen.size):
+                return self.force_disconnect(can_retry = True)
+            packetID = self.format_packetid.unpack_from(data)[0]
+            data = data[self.format_packetid.size:]
+        except socket.error as e:
+            return self.force_disconnect(can_retry = False, error = e)
         try:
             packet = receive[packetID]
             self.log.info("Received packet of type: %s", str(packet))
