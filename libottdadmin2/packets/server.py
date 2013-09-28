@@ -360,7 +360,7 @@ class ServerCmdNames(ReceivingPacket):
         while cont:
             cmd_id = self.unpack(self.format_uint16, data, index)
             index += self.format_uint16.size
-            cmd_name = self.unpack_str(data)
+            cmd_name = self.unpack_str(data, index)
             index += len(cmd_name) + 2 # +2 so we only have to increment once
             cont = bool(self.unpack(self.format_bool, data[index-1]))
             commands[cmd_id] = cmd_name
