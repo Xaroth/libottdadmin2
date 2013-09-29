@@ -170,6 +170,7 @@ class TrackingEvents(object):
         self.rcon           = Event()
         self.rconend        = Event()
         self.console        = Event()
+        self.cmdnames       = Event()
         self.cmdlogging     = Event()
 
         self.pong           = Event()
@@ -206,6 +207,7 @@ class TrackingAdminClient(AdminConnection):
         UpdateType.COMPANY_ECONOMY,
         UpdateType.COMPANY_STATS,
         UpdateType.DATE,
+        UpdateType.NAMES,
     ]
 
     def __init_poll__(self):
@@ -480,6 +482,13 @@ class TrackingAdminClient(AdminConnection):
     @handles_packet(ServerConsole)
     def _server_console(self, message, origin):
         self.events.console(message, origin)
+
+    commands = {}
+
+    @handles_packet(ServerCmdNames)
+    def _server_cmd_names(self, commands):
+        self.commands.update(commands)
+        self.events.cmdnames(commands)
 
     @handles_packet(ServerCmdLogging)
     def _server_cmd_logging(self, **kwargs):
