@@ -24,7 +24,7 @@ except ImportError as e:
         sys.path.append(ROOTDIR)
         try:
             import libottdadmin2
-        except ImportError as ex:
+        except ImportError as e:
             print >> sys.stderr, "Failed to import libottdadmin2: %s" % e
             sys.exit(1)
     else:
