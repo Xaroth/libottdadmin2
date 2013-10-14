@@ -9,13 +9,13 @@ import os
 import warnings
 try:
     import urwid
-except ImportError as e:
-    print >> sys.stderr, "Failed to import urwid: %s" % e
+except ImportError as ex:
+    print >> sys.stderr, "Failed to import urwid: %s" % ex
     print >> sys.stderr, "Please check if you have the urwid library installed."
     sys.exit(1)
 try:
     import libottdadmin2
-except ImportError as e:
+except ImportError as ex:
     DNAME = os.path.abspath(os.path.dirname(__file__))
     ROOTDIR = os.path.dirname(DNAME)
     if os.path.exists(os.path.join(ROOTDIR, 'libottdadmin2')):
@@ -24,11 +24,11 @@ except ImportError as e:
         sys.path.append(ROOTDIR)
         try:
             import libottdadmin2
-        except ImportError as ex:
-            print >> sys.stderr, "Failed to import libottdadmin2: %s" % e
+        except ImportError:
+            print >> sys.stderr, "Failed to import libottdadmin2: %s" % ex
             sys.exit(1)
     else:
-        print >> sys.stderr, "Failed to import libottdadmin2: %s" % e
+        print >> sys.stderr, "Failed to import libottdadmin2: %s" % ex
         sys.exit(1)
 
 def except_hook(extype, exobj, extb, manual=False):
@@ -100,7 +100,7 @@ class MaskableEdit (urwid.Edit):
         return self._hide_text
     @hide_text.setter
     def hide_text(self, value):
-        if type(s) != bool:
+        if type(value) != bool:
             raise TypeError("Wrong type, bool required")
         self._hide_text = value
         self._invalidate()
