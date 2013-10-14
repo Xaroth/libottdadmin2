@@ -54,14 +54,18 @@ def handles_packet(*items):
     return __inner
 
 class MappingObject(object):
-    def __init__(self, kwargs = {}):
+    def __init__(self, kwargs = None):
+        if kwargs is None:
+            kwargs = {}
         self.update(kwargs, True)
 
-    def update(self, kwargs = {}, set_null = False):
-        for key, to in self._mapping:
+    def update(self, kwargs = None, set_null = False):
+        if kwargs is None:
+            kwargs = {}
+        for key, newkey in self._mapping:
             if not set_null and key not in kwargs:
                 continue
-            setattr(self, to, kwargs.get(key))
+            setattr(self, newkey, kwargs.get(key))
 
     def to_dict(self):
         return dict([(x, getattr(self, x, None)) for _, x in self._mapping])
