@@ -27,7 +27,7 @@ class Event(LoggableObject):
             self.log.debug("Calling handler: '%r'", handler)
             try:
                 handler(origin=origin, *args, **kwargs) 
-            except TypeError as e:
+            except TypeError:
                 handler(*args, **kwargs)
 
     def clear(self, from_object = None):
