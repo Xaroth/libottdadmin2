@@ -223,7 +223,7 @@ class TrackingAdminClient(AdminConnection):
             self._poll_registered = False
             try:
                 self._pollobj.unregister(self.fileno())
-            except socket.error as error:
+            except socket.error:
                 pass
             finally:
                 self._pollobj = None
