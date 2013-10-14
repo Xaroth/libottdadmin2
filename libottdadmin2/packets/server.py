@@ -186,6 +186,8 @@ class ServerCompanyNew(ReceivingPacket):
 class ServerCompanyInfo(ReceivingPacket):
     packetID = 114
     format_id = Struct.create("B")
+    format_quarters_bankruptcy  = Struct.create("B")
+    format_shareholders = Struct.create("BBBB")
     format_info = Struct.create("BBIB")
 
     def decode(self, data):
@@ -196,7 +198,8 @@ class ServerCompanyInfo(ReceivingPacket):
         manager = self.unpack_str(data, index)
         index += len(manager)+1
         colour, passworded, startYear, isAI = self.unpack(self.format_info, data, index)
-        return {
+        index += self.format_info.size
+        info = {
             'companyID':    companyID,
             'name':         name, 
             'manager':      manager,
@@ -205,6 +208,11 @@ class ServerCompanyInfo(ReceivingPacket):
             'startYear':    startYear,
             'isAI':         isAI,
         }
+        if len(data) > index:
+            info['bankrupcyCounter'] = self.unpack(self.format_quarters_bankruptcy, data, index)
+            index += self.format_quarters_bankruptcy.size
+            info['shareholders'] = self.unpack(self.format_shareholders, data, index)
+        return info 
 
 @receive.packet
 class ServerCompanyUpdate(ReceivingPacket):
