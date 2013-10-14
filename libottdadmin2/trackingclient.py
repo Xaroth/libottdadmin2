@@ -40,10 +40,9 @@ from .packets import *
 from .event import Event
 from .enums import *
 
-from functools import wraps
 from collections import defaultdict
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
 import socket
 
