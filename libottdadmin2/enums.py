@@ -13,41 +13,41 @@ class EnumHelper(object):
     __min   = None
 
     @classmethod
-    def _build(self):
-        if self.__build:
+    def _build(cls):
+        if cls.__build:
             return
-        self.__build = True
-        self.__dict  = {}
-        self.__rdict = {}
+        cls.__build = True
+        cls.__dict  = {}
+        cls.__rdict = {}
 
-        for item in dir(self):
+        for item in dir(cls):
             if item.upper() != item:
                 continue
             if item.startswith('_'):
                 continue
-            value = getattr(self, item, None)
-            self.__dict[item] = value
-            self.__rdict[value] = item
-        items = sorted(self.__rdict.keys())
+            value = getattr(cls, item, None)
+            cls.__dict[item] = value
+            cls.__rdict[value] = item
+        items = sorted(cls.__rdict.keys())
         if len(items) > 0:
-            self.__max = items[-1]
-            self.__min = items[0]
+            cls.__max = items[-1]
+            cls.__min = items[0]
 
     @classmethod
-    def is_valid(self, value):
-        self._build()
-        if self.is_flag:
-            return value >= 0 and value < self.__max * 2
+    def is_valid(cls, value):
+        cls._build()
+        if cls.is_flag:
+            return value >= 0 and value < cls.__max * 2
         else:
-            return value in self.__rdict
+            return value in cls.__rdict
 
     @classmethod
-    def get_name(self, value):
-        return self.__rdict.get(value, None)
+    def get_name(cls, value):
+        return cls.__rdict.get(value, None)
 
     @classmethod
-    def get_from_name(self, name):
-        return self.__dict.get(name, None)
+    def get_from_name(cls, name):
+        return cls.__dict.get(name, None)
 
 class Status(EnumHelper):
     INACTIVE            = 0x00  #< The admin is not connected nor active.
