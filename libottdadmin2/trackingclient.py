@@ -302,14 +302,14 @@ class TrackingAdminClient(AdminConnection):
             if not hasattr(func, 'handles_packet'):
                 continue
             packets = list(func.handles_packet)
-            for packetID in packets:
-                self.packet_handlers[packetID].append(func)
+            for pid in packets:
+                self.packet_handlers[pid].append(func)
 
-    def disconnected(self, can_retry):
+    def disconnected(self, can_retry): # pylint: disable=E0202
         self.__deinit_poll__()
         self.events.disconnected(can_retry)
 
-    def connected(self):
+    def connected(self): # pylint: disable=E0202
         self.authenticate()
         self.events.connected()
 
