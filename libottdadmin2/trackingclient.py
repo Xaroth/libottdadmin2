@@ -122,9 +122,16 @@ class CompanyInfo(MappingObject):
     ]
     def __init__(self, *args, **kwargs):
         super(CompanyInfo, self).__init__(*args, **kwargs)
-        self.vehicles = VehicleStats()
-        self.stations = VehicleStats()
-        self.economy  = CompanyEconomy()
+        self.vehicles = VehicleStats(
+            {'bus': 0, 'ship': 0, 'train': 0, 'lorry': 0, 'plane': 0})
+        self.stations = VehicleStats(
+            {'bus': 0, 'ship': 0, 'train': 0, 'lorry': 0, 'plane': 0})
+        history = [
+            {'companyValue': 0, 'performanceHistory': 0, 'deliveredCargo': 0},
+            {'companyValue': 0, 'performanceHistory': 0, 'deliveredCargo': 0}]
+        self.economy  = CompanyEconomy(
+            {'deliveredCargo': 0, 'money': 0, 'currentLoan': 0, 'income': 0,
+                'history': history})
 
 class CompanyEconomy(MappingObject):
     _mapping = [
