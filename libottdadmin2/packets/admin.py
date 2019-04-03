@@ -4,42 +4,46 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-from .registry import send
-from .base import SendingPacket, Struct, ValidationError
-
-from ..constants import NETWORK_GAMESCRIPT_JSON_LENGTH, \
-                        NETWORK_RCONCOMMAND_LENGTH, \
-                        NETWORK_CHAT_LENGTH, NETWORK_PASSWORD_LENGTH, \
-                        NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH
-from ..util import datetime_to_gamedate
-
-from ..enums import UpdateType, UpdateFrequency, Action, DestType
+from libottdadmin2.constants import NETWORK_GAMESCRIPT_JSON_LENGTH, \
+    NETWORK_RCONCOMMAND_LENGTH, \
+    NETWORK_CHAT_LENGTH, NETWORK_PASSWORD_LENGTH, \
+    NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH
+from libottdadmin2.enums import UpdateType, UpdateFrequency, Action, DestType
+from libottdadmin2.packets.base import SendingPacket, Struct, ValidationError
+from libottdadmin2.packets.registry import send
+from libottdadmin2.util import integer_types, string_types
 
 try:
     import json
 except ImportError:
-    import simplejson as json 
+    import simplejson as json
+
 
 @send.packet
 class AdminJoin(SendingPacket):
     packetID = 0
 
     def encode(self, password, name, version):
-        if not isinstance(password, basestring):
+        if not isinstance(password, string_types):
             raise ValidationError("Password is not a string")
-        if not isinstance(name, basestring):
+        if not isinstance(name, string_types):
             raise ValidationError("Name is not a string")
-        if not isinstance(version, basestring):
+        if not isinstance(version, string_types):
             raise ValidationError("Version is not a string")
         if len(password) >= NETWORK_PASSWORD_LENGTH:
-            raise ValidationError("Password can not exceed %d characters in length (%d)" % (NETWORK_PASSWORD_LENGTH, len(password)))
+            raise ValidationError("Password can not exceed %d characters in length (%d)" % (
+                NETWORK_PASSWORD_LENGTH,
+                len(password)
+            ))
         yield self.pack_str(password)
         yield self.pack_str(name[:NETWORK_CLIENT_NAME_LENGTH])
         yield self.pack_str(version[:NETWORK_REVISION_LENGTH])
 
+
 @send.packet
 class AdminQuit(SendingPacket):
     packetID = 1
+
 
 @send.packet
 class AdminUpdateFrequency(SendingPacket):
@@ -53,6 +57,7 @@ class AdminUpdateFrequency(SendingPacket):
             raise ValidationError("Invalid updateFreq: '%r'" % updateFreq)
         yield self.pack(self.format, updateType, updateFreq)
 
+
 @send.packet
 class AdminPoll(SendingPacket):
     packetID = 3
@@ -63,46 +68,50 @@ class AdminPoll(SendingPacket):
             raise ValidationError("Invalid pollType: '%r'" % pollType)
         yield self.pack(self.format, pollType, extra)
 
+
 @send.packet
 class AdminChat(SendingPacket):
     packetID = 4
     format = Struct.create("BBI")
 
     def encode(self, action, destType, clientID, message):
-        if not isinstance(action, (int, long)):
+        if not isinstance(action, integer_types):
             raise ValidationError("action is not an int")
-        if action not in [
-            Action.CHAT,
-            Action.CHAT_CLIENT,
-            Action.CHAT_COMPANY,
-            Action.SERVER_MESSAGE,
-            ]:
+        if action not in (Action.CHAT, Action.CHAT_CLIENT, Action.CHAT_COMPANY, Action.SERVER_MESSAGE):
             raise ValidationError("Unable to send a message of type: %r" % action)
         if not DestType.is_valid(destType):
             raise ValidationError("Invalid destType: %r" % destType)
-        if not isinstance(message, basestring):
+        if not isinstance(message, string_types):
             raise ValidationError("Message is not a string")
         if len(message) > NETWORK_CHAT_LENGTH:
-            raise ValidationError("Message can not exceed %d characters in length (%d)" % (NETWORK_CHAT_LENGTH, len(message)))
+            raise ValidationError("Message can not exceed %d characters in length (%d)" % (
+                NETWORK_CHAT_LENGTH,
+                len(message)
+            ))
         yield self.pack(self.format, action, destType, clientID)
         yield self.pack_str(message)
+
 
 @send.packet
 class AdminRcon(SendingPacket):
     packetID = 5
 
     def encode(self, command):
-        if not isinstance(command, basestring):
+        if not isinstance(command, string_types):
             raise ValidationError("Command is not a string")
         if len(command) >= NETWORK_RCONCOMMAND_LENGTH:
-            raise ValidationError("Rcon commands can not exceed %d characters in length (%d)" % (NETWORK_RCONCOMMAND_LENGTH, len(command)))
+            raise ValidationError("Rcon commands can not exceed %d characters in length (%d)" % (
+                NETWORK_RCONCOMMAND_LENGTH,
+                len(command)
+            ))
         yield self.pack_str(command)
+
 
 @send.packet
 class AdminGamescript(SendingPacket):
     packetID = 6
 
-    def encode(self, data = None, json_string = None):
+    def encode(self, data=None, json_string=None):
         if json_string is None and data is not None:
             json_string = json.dumps(data)
         if json_string is None:
@@ -110,6 +119,7 @@ class AdminGamescript(SendingPacket):
         if len(json_string) >= NETWORK_GAMESCRIPT_JSON_LENGTH:
             raise ValidationError("Data object serializes to a json string that's too long to send.")
         yield self.pack_str(json_string)
+
 
 @send.packet
 class AdminPing(SendingPacket):

@@ -4,6 +4,7 @@
 #
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
+from __future__ import print_function
 
 from collections import defaultdict
 from optparse import OptionParser
@@ -14,6 +15,7 @@ import time
 
 from libottdadmin2.client import AdminClient
 from libottdadmin2.packets import *
+from libottdadmin2.util import str_type, int_type
 
 import logging
 logging.basicConfig(level=logging.CRITICAL)
@@ -27,7 +29,7 @@ usage = "usage: %prog -p password [options] <json_file>"
 
 parser = OptionParser(usage = usage)
 parser.add_option("-H", "--host", dest="host", metavar="HOST",
-                  default="127.0.0.1", \
+                  default="127.0.0.1",
                   help="connect to HOST (default: 127.0.0.1)", )
 parser.add_option("-P", "--port", dest="port", type="int", default=3977, 
                   help="use PORT as port (default: 3977)", metavar="PORT")
@@ -35,10 +37,9 @@ parser.add_option("-p", "--password", dest="password", default=None,
                   help="use PASS as password", metavar="PASS")
 parser.add_option("-q", "--quiet", dest="verbose", action="store_false", 
                   help="surpress output")
-#parser.add_option("-Q", "--output-only", dest="output_only", action="store_true", 
-#                  help="Output responses only (use in combination with -q)", default=False)
 parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
                   help="be verbose (default)", default=False)
+
 
 if __name__ == "__main__":
     options, args = parser.parse_args()
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     for reg, section in [(send, "send"), (receive, "receive")]:
         for key, format in json_data.get("formatters", {}).get(section,{}).items():
             packet = None
-            if isinstance(key, basestring):
+            if isinstance(key, str_type):
                 packet = reg.get_by_name(key)
             else:
                 try:
@@ -87,26 +88,26 @@ if __name__ == "__main__":
     def formatter_recv(packet, data):
         pid = packet
         pname = "Unknown packet"
-        if not isinstance(pid, (int, long)):
+        if not isinstance(pid, int_type):
             pid = packet.packetID
             pname = packet.__class__.__name__
-        format = formatters[pid]
+        fmt = formatters[pid]
         print("<<< Received packet with ID: %d (%s)" % (pid, pname))
-        output = format % data
+        output = fmt % data
         if output:
-            print "<<< %s" % output
+            print("<<< %s" % output)
 
     def formatter_send(packet, origin, **data):
         pid = packet
         pname = "Unknown packet"
-        if not isinstance(pid, (int, long)):
+        if not isinstance(pid, int_type):
             pid = packet.packetID
             pname = packet.__class__.__name__
-        format = formatters[pid]
+        fmt = formatters[pid]
         print(">>> Sending packet with ID: %d (%s)" % (pid, pname))
-        output = format % data
+        output = fmt % data
         if output:
-            print ">>> %s" % output
+            print(">>> %s" % output)
 
     if options.verbose:
         print("Loading packetlist")
@@ -121,7 +122,7 @@ if __name__ == "__main__":
             print("Unknown entry: %r" % item)
             continue
         packet = None
-        if isinstance(packetName, basestring):
+        if isinstance(packetName, str_type):
             packet = send.get_by_name(packetName)
         else:
             try:

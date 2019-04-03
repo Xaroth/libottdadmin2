@@ -4,12 +4,12 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-from libottdadmin2.packets import *
 from libottdadmin2 import VERSION
+from libottdadmin2.constants import NETWORK_ADMIN_PORT
 from libottdadmin2.event import Event
-from .util import LoggableObject
+from libottdadmin2.packets import Struct, AdminQuit, send, receive, PacketNotFound, AdminJoin
+from libottdadmin2.util import LoggableObject
 
-from .constants import NETWORK_ADMIN_PORT
 
 import socket
 
@@ -17,16 +17,17 @@ RETRIES = 3
 VERSIONSTRING = "loa2-v%s" % VERSION
 NAME = "LibOTTDAdmin"
 
+
 class AdminConnection(socket.socket, LoggableObject):
     format_packetlen = Struct.create("H")
-    format_packetid  = Struct.create("B")
+    format_packetid = Struct.create("B")
 
-    _settable_args   = ['version', 'password', 'name', 'host', 'port']
+    _settable_args = ['version', 'password', 'name', 'host', 'port']
 
     def __init_events__(self):
         self.connected = Event(self)
         self.disconnected = Event(self)
-        self.packet_send = Event(self)        
+        self.packet_send = Event(self)
         self.packet_recv = Event(self)
 
     def __init_handlers__(self):
@@ -34,14 +35,14 @@ class AdminConnection(socket.socket, LoggableObject):
 
     def __init__(self):
         super(AdminConnection, self).__init__()
-        self.version    = VERSIONSTRING
-        self.name       = NAME
-        self.password   = None
+        self.version = VERSIONSTRING
+        self.name = NAME
+        self.password = None
 
         self._connected = False
 
-        self._host      = "127.0.0.1"
-        self._port      = NETWORK_ADMIN_PORT
+        self._host = "127.0.0.1"
+        self._port = NETWORK_ADMIN_PORT
         self._last_error = None
 
         self.__init_events__()
@@ -66,7 +67,7 @@ class AdminConnection(socket.socket, LoggableObject):
 
     @property
     def version(self):
-        return self._version 
+        return self._version
 
     @version.setter
     def version(self, value):
@@ -147,7 +148,7 @@ class AdminConnection(socket.socket, LoggableObject):
         """
         self.log.info("Disconnecting")
         self.send_packet(AdminQuit)
-        self.force_disconnect(can_retry = False)
+        self.force_disconnect(can_retry=False)
 
     def on_connect(self):
         self.authenticate()
@@ -172,9 +173,9 @@ class AdminConnection(socket.socket, LoggableObject):
             self.log.debug("Data: '%r'", kwargs)
             return self.sendall(packetType(**kwargs))
         except socket.error as e:
-            return self.force_disconnect(can_retry = True, error = e)
+            return self.force_disconnect(can_retry=True, error=e)
 
-    def force_disconnect(self, can_retry = True, error = None):
+    def force_disconnect(self, can_retry=True, error=None):
         """
         Force an unclean disconnect of the connection.. this should only
         be called if the connection cannot be recovered (by being terminated by
@@ -203,15 +204,15 @@ class AdminConnection(socket.socket, LoggableObject):
         try:
             plen = self.recv(self.format_packetlen.size)
             if plen is None or len(plen) < self.format_packetlen.size:
-                return self.force_disconnect(can_retry = True)
+                return self.force_disconnect(can_retry=True)
             plen = self.format_packetlen.unpack_from(plen)[0]
             data = self.recv(plen - self.format_packetlen.size)
             if data is None or len(data) < (plen - self.format_packetlen.size):
-                return self.force_disconnect(can_retry = True)
+                return self.force_disconnect(can_retry=True)
             packetID = self.format_packetid.unpack_from(data)[0]
             data = data[self.format_packetid.size:]
         except socket.error as e:
-            return self.force_disconnect(can_retry = False, error = e)
+            return self.force_disconnect(can_retry=False, error=e)
         try:
             packet = receive[packetID]
             self.log.info("Received packet of type: %s", str(packet))
@@ -219,13 +220,12 @@ class AdminConnection(socket.socket, LoggableObject):
             self.log.debug("Data: '%r'", data)
             self.packet_recv(packet, data)
             return (packet, data)
-        except PacketNotFound as e:
+        except PacketNotFound:
             self.log.warning("Could not find packet with id %d", packetID)
             self.packet_recv(packetID, data)
             return (packetID, data)
-        return None
 
-    def authenticate(self, password = None, name = None, version = None):
+    def authenticate(self, password=None, name=None, version=None):
         """
         The following optional arguments are possible; if specified they will
         override the current set value for them:
@@ -234,8 +234,8 @@ class AdminConnection(socket.socket, LoggableObject):
         - name    : To set the admin name
         """
         password = password or self._password
-        name     = name     or self.name
-        version  = version  or self.version
+        name = name or self.name
+        version = version or self.version
         if not password or not name or not version:
             return
         self.password, self.name, self.version = password, name, version

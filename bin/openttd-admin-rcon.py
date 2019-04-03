@@ -16,7 +16,7 @@ usage = "usage: %prog -p password [options] \"command1\" [\"command2\"] [...]"
 
 parser = OptionParser(usage = usage)
 parser.add_option("-H", "--host", dest="host", metavar="HOST",
-                  default="127.0.0.1", \
+                  default="127.0.0.1",
                   help="connect to HOST (default: 127.0.0.1)", )
 parser.add_option("-P", "--port", dest="port", type="int", default=3977, 
                   help="use PORT as port (default: 3977)", metavar="PORT")
@@ -62,7 +62,7 @@ if __name__ == "__main__":
                 break
             if options.verbose:
                 print("Sending Rcon command: '%s'" % command)
-            connection.send_packet(AdminRcon, command = command)
+            connection.send_packet(AdminRcon, command=command)
 
             cont = True
             while cont:
