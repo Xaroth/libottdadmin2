@@ -71,7 +71,7 @@ class ServerWelcome(ReceivingPacket):
         index += len(name) + 1
         version = self.unpack_str(data, index)
         index += len(version) + 2
-        dedicated = bool(self.unpack(self.format_bool, data[index - 1]))
+        dedicated = bool(self.unpack(self.format_bool, data[index - 1:index]))
         map_name = self.unpack_str(data, index)
         index += len(map_name) + 1
         seed, landscape, startyear, x, y = self.unpack(self.format, data, index)
@@ -382,14 +382,14 @@ class ServerCmdNames(ReceivingPacket):
 
     def decode(self, data):
         index = 1
-        cont = bool(self.unpack(self.format_bool, data[index - 1]))
+        cont = bool(self.unpack(self.format_bool, data[index - 1:index]))
         commands = {}
         while cont:
             cmd_id = self.unpack(self.format_uint16, data, index)
             index += self.format_uint16.size
             cmd_name = self.unpack_str(data, index)
             index += len(cmd_name) + 2  # +2 so we only have to increment once
-            cont = bool(self.unpack(self.format_bool, data[index - 1]))
+            cont = bool(self.unpack(self.format_bool, data[index - 1:index]))
             commands[cmd_id] = cmd_name
         return {
             'commands': commands,

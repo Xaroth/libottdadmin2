@@ -56,7 +56,7 @@ def pack_str(string):
 
 def unpack_str(data, index=0):
     try:
-        found_pos = data.index('\x00', index)
+        found_pos = data.index(b'\x00', index)
         return ensure_text(data[index:found_pos])
     except ValueError:
         raise
@@ -123,7 +123,7 @@ class SendingPacket(Packet):
                 length += len(part)
             data.append(part)
         data[0] = self.pack(self.format_packetlen, length)
-        return ''.join(data)
+        return b''.join(data)
 
     def encode(self, **kwargs):
         return
