@@ -1,5 +1,6 @@
 .venv
 .idea
+.coverage
 
 *.py[cod]
 

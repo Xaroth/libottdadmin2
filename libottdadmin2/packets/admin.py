@@ -1,130 +1,116 @@
-#
-# This file is part of libottdadmin2
-#
-# License: http://creativecommons.org/licenses/by-nc-sa/3.0/
-#
+import json
 
-from libottdadmin2.constants import NETWORK_GAMESCRIPT_JSON_LENGTH, \
-    NETWORK_RCONCOMMAND_LENGTH, \
-    NETWORK_CHAT_LENGTH, NETWORK_PASSWORD_LENGTH, \
-    NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH
-from libottdadmin2.enums import UpdateType, UpdateFrequency, Action, DestType
-from libottdadmin2.packets.base import SendingPacket, Struct, ValidationError
-from libottdadmin2.packets.registry import send
-from libottdadmin2.util import integer_types, string_types
-
-try:
-    import json
-except ImportError:
-    import simplejson as json
+from libottdadmin2.constants import NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH, NETWORK_PASSWORD_LENGTH, \
+    NETWORK_CHAT_LENGTH, NETWORK_RCONCOMMAND_LENGTH, NETWORK_GAMESCRIPT_JSON_LENGTH
+from libottdadmin2.packets.base import Packet, check_length
+from libottdadmin2.enums import UpdateType, UpdateFrequency, ChatAction, DestType
 
 
-@send.packet
-class AdminJoin(SendingPacket):
-    packetID = 0
+@Packet.register
+class AdminJoin(Packet):
+    packet_id = 0
+    fields = ['password', 'name', 'version']
 
     def encode(self, password, name, version):
-        if not isinstance(password, string_types):
-            raise ValidationError("Password is not a string")
-        if not isinstance(name, string_types):
-            raise ValidationError("Name is not a string")
-        if not isinstance(version, string_types):
-            raise ValidationError("Version is not a string")
-        if len(password) >= NETWORK_PASSWORD_LENGTH:
-            raise ValidationError("Password can not exceed %d characters in length (%d)" % (
-                NETWORK_PASSWORD_LENGTH,
-                len(password)
-            ))
-        yield self.pack_str(password)
-        yield self.pack_str(name[:NETWORK_CLIENT_NAME_LENGTH])
-        yield self.pack_str(version[:NETWORK_REVISION_LENGTH])
+        self.write_str(check_length(password, NETWORK_PASSWORD_LENGTH, "'password'"),
+                       check_length(name, NETWORK_CLIENT_NAME_LENGTH, "'name'"),
+                       check_length(version, NETWORK_REVISION_LENGTH, "'version'"))
+
+    def decode(self):
+        password, name, version = self.read_str(3)
+        return self.data(check_length(password, NETWORK_PASSWORD_LENGTH, "'password'"),
+                               check_length(name, NETWORK_CLIENT_NAME_LENGTH, "'name'"),
+                               check_length(version, NETWORK_REVISION_LENGTH, "'version'"))
 
 
-@send.packet
-class AdminQuit(SendingPacket):
-    packetID = 1
+@Packet.register
+class AdminQuit(Packet):
+    packet_id = 1
 
 
-@send.packet
-class AdminUpdateFrequency(SendingPacket):
-    packetID = 2
-    format = Struct.create("HH")
+@Packet.register
+class AdminUpdateFrequency(Packet):
+    packet_id = 2
+    fields = ['type', 'freq']
 
-    def encode(self, updateType, updateFreq):
-        if not UpdateType.is_valid(updateType):
-            raise ValidationError("Invalid updateType: '%r'" % updateType)
-        if not UpdateFrequency.is_valid(updateFreq):
-            raise ValidationError("Invalid updateFreq: '%r'" % updateFreq)
-        yield self.pack(self.format, updateType, updateFreq)
+    def encode(self, type: UpdateType, freq: UpdateFrequency):
+        self.write_ushort(UpdateType(type), UpdateFrequency(freq))
 
-
-@send.packet
-class AdminPoll(SendingPacket):
-    packetID = 3
-    format = Struct.create("BI")
-
-    def encode(self, pollType, extra):
-        if not UpdateType.is_valid(pollType):
-            raise ValidationError("Invalid pollType: '%r'" % pollType)
-        yield self.pack(self.format, pollType, extra)
+    def decode(self):
+        type, freq = self.read_ushort(2)
+        return self.data(UpdateType(type), UpdateFrequency(freq))
 
 
-@send.packet
-class AdminChat(SendingPacket):
-    packetID = 4
-    format = Struct.create("BBI")
+@Packet.register
+class AdminPoll(Packet):
+    packet_id = 3
+    fields = ['type', 'extra']
 
-    def encode(self, action, destType, clientID, message):
-        if not isinstance(action, integer_types):
-            raise ValidationError("action is not an int")
-        if action not in (Action.CHAT, Action.CHAT_CLIENT, Action.CHAT_COMPANY, Action.SERVER_MESSAGE):
-            raise ValidationError("Unable to send a message of type: %r" % action)
-        if not DestType.is_valid(destType):
-            raise ValidationError("Invalid destType: %r" % destType)
-        if not isinstance(message, string_types):
-            raise ValidationError("Message is not a string")
-        if len(message) > NETWORK_CHAT_LENGTH:
-            raise ValidationError("Message can not exceed %d characters in length (%d)" % (
-                NETWORK_CHAT_LENGTH,
-                len(message)
-            ))
-        yield self.pack(self.format, action, destType, clientID)
-        yield self.pack_str(message)
+    def encode(self, type, extra):
+        self.write_byte(UpdateType(type))
+        self.write_uint(extra)
+
+    def decode(self):
+        _type, extra = self.read_data(['byte', 'uint'])
+        return self.data(UpdateType(_type), extra)
 
 
-@send.packet
-class AdminRcon(SendingPacket):
-    packetID = 5
+@Packet.register
+class AdminChat(Packet):
+    packet_id = 4
+    fields = ['action', 'type', 'client_id', 'message']
+
+    def encode(self, action: ChatAction, type: DestType, client_id, message):
+        self.write_byte(ChatAction(action))
+        self.write_byte(DestType(type))
+        self.write_uint(client_id)
+        self.write_str(check_length(message, NETWORK_CHAT_LENGTH, "'message'"))
+
+    def decode(self):
+        action, _type, client_id = self.read_data(['byte', 'byte', 'uint'])
+        message, = self.read_str()
+        # TODO: convert to enum
+        return self.data(ChatAction(action), DestType(_type), client_id,
+                               check_length(message, NETWORK_CHAT_LENGTH, "'message'"))
+
+
+@Packet.register
+class AdminRcon(Packet):
+    packet_id = 5
+    fields = ['command']
 
     def encode(self, command):
-        if not isinstance(command, string_types):
-            raise ValidationError("Command is not a string")
-        if len(command) >= NETWORK_RCONCOMMAND_LENGTH:
-            raise ValidationError("Rcon commands can not exceed %d characters in length (%d)" % (
-                NETWORK_RCONCOMMAND_LENGTH,
-                len(command)
-            ))
-        yield self.pack_str(command)
+        self.write_str(check_length(command, NETWORK_RCONCOMMAND_LENGTH, "'command'"))
+
+    def decode(self):
+        command, = self.read_str()
+        return self.data(check_length(command, NETWORK_RCONCOMMAND_LENGTH, "'command'"))
 
 
-@send.packet
-class AdminGamescript(SendingPacket):
-    packetID = 6
+@Packet.register
+class AdminGamescript(Packet):
+    packet_id = 6
+    fields = ['json_data']
 
-    def encode(self, data=None, json_string=None):
-        if json_string is None and data is not None:
-            json_string = json.dumps(data)
-        if json_string is None:
-            raise ValidationError("Please specify either the data object to serialize, or the json string directly.")
-        if len(json_string) >= NETWORK_GAMESCRIPT_JSON_LENGTH:
-            raise ValidationError("Data object serializes to a json string that's too long to send.")
-        yield self.pack_str(json_string)
+    def encode(self, json_data):
+        json_string = json.dumps(json_data)
+        self.write_str(check_length(json_string, NETWORK_GAMESCRIPT_JSON_LENGTH, "'json_data'"))
+
+    def decode(self):
+        json_string, = self.read_str()
+        json_data = json.loads(check_length(json_string, NETWORK_GAMESCRIPT_JSON_LENGTH, "'json_data'"))
+        return self.data(json_data)
 
 
-@send.packet
-class AdminPing(SendingPacket):
-    packetID = 7
-    format = Struct.create("I")
+@Packet.register
+class AdminPing(Packet):
+    packet_id = 7
+    fields = ['payload']
 
     def encode(self, payload):
-        yield self.pack(self.format, payload)
+        self.write_uint(payload)
+
+    def decode(self):
+        payload, = self.read_uint()
+        return self.data(payload)
+

@@ -5,9 +5,10 @@
 #
 
 import logging
+import operator
+import re
 import sys
 import types
-import operator
 
 from datetime import datetime, timedelta
 
@@ -21,8 +22,10 @@ def gamedate_to_datetime(date):
     return GAMEDATE_BASE_DATE + timedelta(days=date - GAMEDATE_BASE_OFFSET)
 
 
-def datetime_to_gamedate(datetime):
-    return (datetime - GAMEDATE_BASE_DATE).days + GAMEDATE_BASE_OFFSET
+def datetime_to_gamedate(dt):
+    if dt == datetime.min:
+        return 0
+    return (dt - GAMEDATE_BASE_DATE).days + GAMEDATE_BASE_OFFSET
 
 
 class LoggableObject(object):
@@ -51,13 +54,22 @@ class LoggableObject(object):
             delattr(self, '_logger')
 
 
+first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+all_cap_re = re.compile('([a-z0-9])([A-Z])')
+
+
+def camel_to_snake(name):
+    s1 = first_cap_re.sub(r'\1_\2', name)
+    return all_cap_re.sub(r'\1_\2', s1).lower()
+
+
 # From Python six ( https://github.com/benjaminp/six / https://six.readthedocs.io/ )
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 PY34 = sys.version_info[0:2] >= (3, 4)
 
-if PY3:
+if PY3:  # pragma: no cover
     string_types = str,  # noqa
     integer_types = int,  # noqa
     class_types = type,  # noqa
@@ -75,7 +87,7 @@ if PY3:
     def iteritems(d, **kw):
         return iter(d.items(**kw))
 
-else:
+else:  # pragma: no cover
     string_types = basestring,  # noqa
     integer_types = (int, long)  # noqa
     class_types = (type, types.ClassType)
@@ -159,4 +171,5 @@ __all__ = [
     "ensure_str",
     "ensure_text",
     "get_method_self",
+    "camel_to_snake",
 ]
