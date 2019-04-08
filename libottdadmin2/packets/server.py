@@ -210,14 +210,14 @@ class ServerCompanyNew(Packet):
 @Packet.register
 class ServerCompanyInfo(Packet):
     packet_id = 114
-    fields = ['company_id', 'name', 'manager', 'color', 'passworded', 'startyear', 'is_ai', 'bankrupcy_counter',
+    fields = ['company_id', 'name', 'manager', 'colour', 'passworded', 'startyear', 'is_ai', 'bankrupcy_counter',
               'shareholders']
 
-    def encode(self, company_id, name, manager, color, passworded, startyear, is_ai, bankrupcy_counter, shareholders):
+    def encode(self, company_id, name, manager, colour, passworded, startyear, is_ai, bankrupcy_counter, shareholders):
         self.write_byte(company_id)
         self.write_str(check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
                        check_length(manager, NETWORK_COMPANY_NAME_LENGTH, "'manager'"))
-        self.write_byte(color)
+        self.write_byte(colour)
         self.write_bool(passworded)
         self.write_uint(startyear)
         self.write_bool(is_ai)
@@ -228,7 +228,7 @@ class ServerCompanyInfo(Packet):
     def decode(self):
         company_id, = self.read_byte()
         name, manager = self.read_str(2)
-        color, = self.read_byte()
+        colour, = self.read_byte()
         passworded, = self.read_bool()
         startyear, = self.read_uint()
         is_ai, = self.read_bool()
@@ -241,7 +241,7 @@ class ServerCompanyInfo(Packet):
             company_id,
             check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
             check_length(manager, NETWORK_COMPANY_NAME_LENGTH, "'manager'"),
-            color,
+            colour,
             passworded,
             startyear,
             is_ai,
@@ -253,13 +253,13 @@ class ServerCompanyInfo(Packet):
 @Packet.register
 class ServerCompanyUpdate(Packet):
     packet_id = 115
-    fields = ['company_id', 'name', 'manager', 'color', 'passworded', 'bankrupcy_counter', 'shareholders']
+    fields = ['company_id', 'name', 'manager', 'colour', 'passworded', 'bankrupcy_counter', 'shareholders']
 
-    def encode(self, company_id, name, manager, color, passworded, bankrupcy_counter, shareholders):
+    def encode(self, company_id, name, manager, colour, passworded, bankrupcy_counter, shareholders):
         self.write_byte(company_id)
         self.write_str(check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
                        check_length(manager, NETWORK_COMPANY_NAME_LENGTH, "'manager'"))
-        self.write_byte(color)
+        self.write_byte(colour)
         self.write_bool(passworded)
         self.write_byte(bankrupcy_counter)
         self.write_byte(*((shareholders + ([0] * 4))[0:4]))
@@ -267,7 +267,7 @@ class ServerCompanyUpdate(Packet):
     def decode(self):
         company_id, = self.read_byte()
         name, manager = self.read_str(2)
-        color, = self.read_byte()
+        colour, = self.read_byte()
         passworded, = self.read_bool()
         bankrupcy_counter, = self.read_byte()
         shareholders = list(self.read_byte(4))
@@ -275,7 +275,7 @@ class ServerCompanyUpdate(Packet):
             company_id,
             check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
             check_length(manager, NETWORK_COMPANY_NAME_LENGTH, "'manager'"),
-            color,
+            colour,
             passworded,
             bankrupcy_counter,
             shareholders,
@@ -371,16 +371,16 @@ class ServerChat(Packet):
 @Packet.register
 class ServerRcon(Packet):
     packet_id = 120
-    fields = ['color', 'result']
+    fields = ['colour', 'result']
 
-    def encode(self, color, result):
-        self.write_ushort(color)
+    def encode(self, colour, result):
+        self.write_ushort(colour)
         self.write_str(check_length(result, NETWORK_RCONCOMMAND_LENGTH, "'result'"))
 
     def decode(self):
-        color, = self.read_ushort()
+        colour, = self.read_ushort()
         result, = self.read_str()
-        return self.data(color, check_length(result, NETWORK_RCONCOMMAND_LENGTH, "'result'"))
+        return self.data(colour, check_length(result, NETWORK_RCONCOMMAND_LENGTH, "'result'"))
 
 
 @Packet.register
