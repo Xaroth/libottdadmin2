@@ -40,10 +40,13 @@ class OttdClientMixIn(LoggableObject):
 
     def packet_received(self, packet: Packet, data: Tuple[Any, ...]):
         self.log.debug("Packet received: %r", data)
-        funcname = "on_%s" % camel_to_snake(packet.__class__.__name__)
-        handler = getattr(self, funcname, None)
-        if handler and callable(funcname):
+        func_name = camel_to_snake(packet.__class__.__name__)
+        handler = getattr(self, "on_%s" % func_name, None)
+        if handler and callable(handler):
             handler(**data._asdict())
+        handler = getattr(self, "on_%s_raw" % func_name, None)
+        if handler and callable(handler):
+            handler(packet=packet, data=data)
 
     def connection_closed(self):
         raise NotImplemented()
