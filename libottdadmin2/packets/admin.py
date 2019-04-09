@@ -1,3 +1,9 @@
+#
+# This file is part of libottdadmin2
+#
+# License: http://creativecommons.org/licenses/by-nc-sa/3.0/
+#
+
 import json
 
 from libottdadmin2.constants import NETWORK_CLIENT_NAME_LENGTH, NETWORK_REVISION_LENGTH, NETWORK_PASSWORD_LENGTH, \

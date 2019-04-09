@@ -4,6 +4,7 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
+# noinspection PyProtectedMember
 from selectors import DefaultSelector, _BaseSelectorImpl, EVENT_READ
 import socket
 from typing import Union, Optional
@@ -13,8 +14,8 @@ from libottdadmin2.constants import SEND_MTU
 from libottdadmin2.packets import Packet
 
 
-def reader_for_socket(selector: _BaseSelectorImpl, socket: socket.socket):
-    def _read(conn, mask):
+def reader_for_socket(selector: _BaseSelectorImpl, sock: socket.socket):
+    def _read(conn: OttdSocket, mask):
         data = conn.recv(SEND_MTU)
         if data:
             conn.data_received(data)
@@ -22,11 +23,11 @@ def reader_for_socket(selector: _BaseSelectorImpl, socket: socket.socket):
             selector.unregister(conn)
             conn.connection_lost(exc=None)
 
-    selector.register(socket, EVENT_READ, _read)
+    selector.register(sock, EVENT_READ, _read)
 
 
 class OttdSocket(OttdClientMixIn, socket.socket):
-    def __init__(self, password=None, user_agent=None, version=None):
+    def __init__(self, password: Optional[str] = None, user_agent: Optional[str] = None, version: Optional[str] = None):
         super().__init__(socket.AF_INET, socket.SOCK_STREAM)
         self.peername = None
         self._connected = False
@@ -46,7 +47,7 @@ class OttdSocket(OttdClientMixIn, socket.socket):
         self.connection_made()
         return self._connected
 
-    def connection_lost(self, exc: Optional[Exception]) -> None:
+    def connection_lost(self, exc: Optional[Exception] = None) -> None:
         self.log.info("Connection lost to %s:%d", self.peername[0], self.peername[1])
         self.close()
         self._connected = False

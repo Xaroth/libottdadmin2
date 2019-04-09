@@ -12,7 +12,8 @@ from libottdadmin2.util import LoggableObject, camel_to_snake
 
 
 class OttdClientMixIn(LoggableObject):
-    def configure(self, password, user_agent=None, version=None):
+    def configure(self, password: Optional[str] = None, user_agent: Optional[str] = None,
+                  version: Optional[str] = None):
         from libottdadmin2 import VERSION
         self._password = password
         self._user_agent = user_agent or "libottdadmin2"
@@ -38,7 +39,7 @@ class OttdClientMixIn(LoggableObject):
                 break
             self.packet_received(packet, packet.decode())
 
-    def packet_received(self, packet: Packet, data: Tuple[Any, ...]):
+    def packet_received(self, packet: Packet, data: Tuple[Any, ...]) -> None:
         self.log.debug("Packet received: %r", data)
         func_name = camel_to_snake(packet.__class__.__name__)
         handler = getattr(self, "on_%s" % func_name, None)
@@ -48,16 +49,16 @@ class OttdClientMixIn(LoggableObject):
         if handler and callable(handler):
             handler(packet=packet, data=data)
 
-    def connection_closed(self):
+    def connection_closed(self) -> None:
         raise NotImplemented()
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
         raise NotImplemented()
 
-    def send_packet(self, packet: Packet):
+    def send_packet(self, packet: Packet) -> None:
         raise NotImplemented()
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         self.send_packet(AdminQuit.create())
         self.connection_closed()
 
