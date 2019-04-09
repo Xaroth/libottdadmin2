@@ -10,7 +10,7 @@ from itertools import chain
 
 from libottdadmin2.exceptions import InvalidHeaderError, UnknownPacketError, InvalidPacketLengthError, \
     PacketExhaustedError
-from libottdadmin2.util import ensure_binary, ensure_text
+from libottdadmin2.util import ensure_binary
 
 from struct import Struct
 

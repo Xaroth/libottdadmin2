@@ -69,7 +69,6 @@ class AdminChat(Packet):
     def decode(self):
         action, _type, client_id = self.read_data(['byte', 'byte', 'uint'])
         message, = self.read_str()
-        # TODO: convert to enum
         return self.data(ChatAction(action), DestType(_type), client_id,
                                check_length(message, NETWORK_CHAT_LENGTH, "'message'"))
 

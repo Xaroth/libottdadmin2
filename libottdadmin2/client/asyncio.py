@@ -13,6 +13,7 @@ from libottdadmin2.packets import Packet
 
 
 class OttdAdminProtocol(OttdClientMixIn, asyncio.Protocol):
+    # noinspection PyUnusedLocal
     def __init__(self, loop, password=None, user_agent=None, version=None, **kwargs):
         self.loop = loop
         self._buffer = b''

@@ -20,7 +20,7 @@ def reader_for_socket(selector: _BaseSelectorImpl, socket: socket.socket):
             conn.data_received(data)
         else:
             selector.unregister(conn)
-            conn.connection_lost()
+            conn.connection_lost(exc=None)
 
     selector.register(socket, EVENT_READ, _read)
 

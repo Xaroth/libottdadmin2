@@ -5,10 +5,7 @@
 #
 
 import logging
-import operator
 import re
-import sys
-import types
 
 from datetime import datetime, timedelta
 
@@ -54,6 +51,21 @@ class LoggableObject(object):
             delattr(self, '_logger')
 
 
+class SimpleDataclass:
+    def __init__(self, **kwargs):
+        for key, val in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, val)
+
+    def update(self, **kwargs):
+        for key, val in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, val)
+
+    def __repr__(self):
+        return "<%s(**%r)>" % (self.__class__.__name__, self.__dict__)
+
+
 first_cap_re = re.compile('(.)([A-Z][a-z]+)')
 all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
@@ -63,98 +75,10 @@ def camel_to_snake(name):
     return all_cap_re.sub(r'\1_\2', s1).lower()
 
 
-# From Python six ( https://github.com/benjaminp/six / https://six.readthedocs.io/ )
-
-PY2 = sys.version_info[0] == 2
-PY3 = sys.version_info[0] == 3
-PY34 = sys.version_info[0:2] >= (3, 4)
-
-if PY3:  # pragma: no cover
-    string_types = str,  # noqa
-    integer_types = int,  # noqa
-    class_types = type,  # noqa
-    text_type = str  # noqa
-    binary_type = bytes  # noqa
-
-    _meth_self = "__self__"
-
-    def iterkeys(d, **kw):
-        return iter(d.keys(**kw))
-
-    def itervalues(d, **kw):
-        return iter(d.values(**kw))
-
-    def iteritems(d, **kw):
-        return iter(d.items(**kw))
-
-else:  # pragma: no cover
-    string_types = basestring,  # noqa
-    integer_types = (int, long)  # noqa
-    class_types = (type, types.ClassType)
-    text_type = unicode  # noqa
-    binary_type = str  # noqa
-
-    _meth_self = "im_self"
-
-    def iterkeys(d, **kw):
-        return d.iterkeys(**kw)
-
-    def itervalues(d, **kw):
-        return d.itervalues(**kw)
-
-    def iteritems(d, **kw):
-        return d.iteritems(**kw)
-
-get_method_self = operator.attrgetter(_meth_self)
-
-
 def ensure_binary(s, encoding='utf-8', errors='strict'):
-    """Coerce **s** to `binary_type`.
-    For Python 2:
-      - `unicode` -> encoded to `str`
-      - `str` -> `str`
-    For Python 3:
-      - `str` -> encoded to `bytes`
-      - `bytes` -> `bytes`
-    """
-    if isinstance(s, text_type):
+    if isinstance(s, str):
         return s.encode(encoding, errors)
-    elif isinstance(s, binary_type):
-        return s
-    else:
-        raise TypeError("not expecting type '%s'" % type(s))
-
-
-def ensure_str(s, encoding='utf-8', errors='strict'):
-    """Coerce *s* to `str`.
-    For Python 2:
-      - `unicode` -> encoded to `str`
-      - `str` -> `str`
-    For Python 3:
-      - `str` -> `str`
-      - `bytes` -> decoded to `str`
-    """
-    if not isinstance(s, (text_type, binary_type)):
-        raise TypeError("not expecting type '%s'" % type(s))
-    if PY2 and isinstance(s, text_type):
-        s = s.encode(encoding, errors)
-    elif PY3 and isinstance(s, binary_type):
-        s = s.decode(encoding, errors)
-    return s
-
-
-def ensure_text(s, encoding='utf-8', errors='strict'):
-    """Coerce *s* to `text_type`.
-    For Python 2:
-      - `unicode` -> `unicode`
-      - `str` -> `unicode`
-    For Python 3:
-      - `str` -> `str`
-      - `bytes` -> decoded to `str`
-    """
-    if isinstance(s, binary_type):
-        return s.decode(encoding, errors)
-    elif isinstance(s, text_type):
+    elif isinstance(s, bytes):
         return s
     else:
         raise TypeError("not expecting type '%s'" % type(s))
@@ -162,14 +86,9 @@ def ensure_text(s, encoding='utf-8', errors='strict'):
 
 __all__ = [
     "LoggableObject",
+    "SimpleDataclass",
     "gamedate_to_datetime",
     "datetime_to_gamedate",
-    "string_types",
-    "integer_types",
-
-    "ensure_binary",
-    "ensure_str",
-    "ensure_text",
-    "get_method_self",
     "camel_to_snake",
+    "ensure_binary",
 ]
