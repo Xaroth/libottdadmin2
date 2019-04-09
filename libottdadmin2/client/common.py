@@ -50,10 +50,10 @@ class OttdClientMixIn(LoggableObject):
             handler(packet=packet, data=data)
 
     def connection_closed(self) -> None:
-        raise NotImplemented()
+        pass
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
-        raise NotImplemented()
+        pass
 
     def send_packet(self, packet: Packet) -> None:
         raise NotImplemented()

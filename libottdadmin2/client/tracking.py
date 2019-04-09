@@ -46,7 +46,7 @@ class TrackingMixIn:
         self.companies = {
             255: ServerCompanyInfo.data(company_id=255, name='Spectators', manager='Spec Tator', colour=0,
                                         passworded=False, startyear=startyear,
-                                        is_ai=False, bankrupcy_counter=0, shareholders=[255, 255, 255, 255])
+                                        is_ai=False, bankruptcy_counter=0, shareholders=[255, 255, 255, 255])
         }
         self.economy = {}
         self.company_stats = {}
@@ -105,7 +105,7 @@ class TrackingMixIn:
         self.commands.update(commands)
 
     def on_server_company_new(self, company_id) -> None:
-        print("company_id", company_id)
+        pass
 
     # noinspection PyUnusedLocal
     def on_server_company_info_raw(self, packet: Packet, data) -> None:

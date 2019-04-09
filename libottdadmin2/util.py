@@ -84,6 +84,15 @@ def ensure_binary(s, encoding='utf-8', errors='strict'):
         raise TypeError("not expecting type '%s'" % type(s))
 
 
+def ensure_text(s, encoding='utf-8', errors='strict'):
+    if isinstance(s, bytes):
+        return s.decode(encoding, errors)
+    elif isinstance(s, str):
+        return s
+    else:
+        raise TypeError("not expecting type '%s'" % type(s))
+
+
 __all__ = [
     "LoggableObject",
     "SimpleDataclass",
@@ -91,4 +100,5 @@ __all__ = [
     "datetime_to_gamedate",
     "camel_to_snake",
     "ensure_binary",
+    "ensure_text",
 ]
