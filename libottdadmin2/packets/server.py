@@ -210,10 +210,10 @@ class ServerCompanyNew(Packet):
 @Packet.register
 class ServerCompanyInfo(Packet):
     packet_id = 114
-    fields = ['company_id', 'name', 'manager', 'colour', 'passworded', 'startyear', 'is_ai', 'bankrupcy_counter',
+    fields = ['company_id', 'name', 'manager', 'colour', 'passworded', 'startyear', 'is_ai', 'bankruptcy_counter',
               'shareholders']
 
-    def encode(self, company_id, name, manager, colour, passworded, startyear, is_ai, bankrupcy_counter, shareholders):
+    def encode(self, company_id, name, manager, colour, passworded, startyear, is_ai, bankruptcy_counter, shareholders):
         self.write_byte(company_id)
         self.write_str(check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
                        check_length(manager, NETWORK_COMPANY_NAME_LENGTH, "'manager'"))
@@ -221,8 +221,8 @@ class ServerCompanyInfo(Packet):
         self.write_bool(passworded)
         self.write_uint(startyear)
         self.write_bool(is_ai)
-        if shareholders is not None or bankrupcy_counter is not None:
-            self.write_byte(bankrupcy_counter)
+        if shareholders is not None or bankruptcy_counter is not None:
+            self.write_byte(bankruptcy_counter)
             self.write_byte(*((shareholders + ([0] * 4))[0:4]))
 
     def decode(self):
@@ -232,10 +232,10 @@ class ServerCompanyInfo(Packet):
         passworded, = self.read_bool()
         startyear, = self.read_uint()
         is_ai, = self.read_bool()
-        bankrupcy_counter = None
+        bankruptcy_counter = None
         shareholders = None
         if self.has_available_data:
-            bankrupcy_counter, = self.read_byte()
+            bankruptcy_counter, = self.read_byte()
             shareholders = list(self.read_byte(4))
         return self.data(
             company_id,
@@ -245,7 +245,7 @@ class ServerCompanyInfo(Packet):
             passworded,
             startyear,
             is_ai,
-            bankrupcy_counter,
+            bankruptcy_counter,
             shareholders,
         )
 
@@ -253,15 +253,15 @@ class ServerCompanyInfo(Packet):
 @Packet.register
 class ServerCompanyUpdate(Packet):
     packet_id = 115
-    fields = ['company_id', 'name', 'manager', 'colour', 'passworded', 'bankrupcy_counter', 'shareholders']
+    fields = ['company_id', 'name', 'manager', 'colour', 'passworded', 'bankruptcy_counter', 'shareholders']
 
-    def encode(self, company_id, name, manager, colour, passworded, bankrupcy_counter, shareholders):
+    def encode(self, company_id, name, manager, colour, passworded, bankruptcy_counter, shareholders):
         self.write_byte(company_id)
         self.write_str(check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
                        check_length(manager, NETWORK_COMPANY_NAME_LENGTH, "'manager'"))
         self.write_byte(colour)
         self.write_bool(passworded)
-        self.write_byte(bankrupcy_counter)
+        self.write_byte(bankruptcy_counter)
         self.write_byte(*((shareholders + ([0] * 4))[0:4]))
 
     def decode(self):
@@ -269,7 +269,7 @@ class ServerCompanyUpdate(Packet):
         name, manager = self.read_str(2)
         colour, = self.read_byte()
         passworded, = self.read_bool()
-        bankrupcy_counter, = self.read_byte()
+        bankruptcy_counter, = self.read_byte()
         shareholders = list(self.read_byte(4))
         return self.data(
             company_id,
@@ -277,7 +277,7 @@ class ServerCompanyUpdate(Packet):
             check_length(manager, NETWORK_COMPANY_NAME_LENGTH, "'manager'"),
             colour,
             passworded,
-            bankrupcy_counter,
+            bankruptcy_counter,
             shareholders,
         )
 
@@ -389,7 +389,7 @@ class ServerConsole(Packet):
     fields = ['origin', 'message']
 
     def encode(self, origin, message):
-        # Falling back to NETWORK_GAMESCRIPT_JSON_LENGTH as there's no restriction in max length
+        # Falling back to NETWORK_GAMESCRIPT_JSON_LENGTH as there's no apparent restriction in max length
         # for console messages.
         self.write_str(origin, check_length(message, NETWORK_GAMESCRIPT_JSON_LENGTH, "'message'"))
 
