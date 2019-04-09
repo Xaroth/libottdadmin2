@@ -76,6 +76,7 @@ class ChatAction(IntEnum):
     CHAT_COMPANY = 0x04
     CHAT_CLIENT = 0x05
 
+
 class NonChatAction(IntEnum):
     JOIN = 0x00
     LEAVE = 0x01
@@ -145,4 +146,3 @@ class Landscape(IntEnum):
     ARCTIC = 0x01
     TROPIC = 0x02
     TOYLAND = 0x03
-
