@@ -1,6 +1,5 @@
 .venv
 .idea
-.coverage
 
 *.py[cod]
 
@@ -26,6 +25,7 @@ pip-log.txt
 
 # Unit test / coverage reports
 .coverage
+htmlcov/
 .tox
 nosetests.xml
 
