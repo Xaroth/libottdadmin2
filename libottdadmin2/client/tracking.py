@@ -10,8 +10,10 @@ from libottdadmin2.enums import UpdateType, UpdateFrequency, PollExtra, ErrorCod
 from libottdadmin2.packets import AdminPoll, Packet
 from libottdadmin2.packets import AdminUpdateFrequency
 from libottdadmin2.packets import ServerCompanyInfo
+from libottdadmin2.util import loggable
 
 
+@loggable
 class TrackingMixIn:
     update_types = {
         UpdateType.CLIENT_INFO: UpdateFrequency.AUTOMATIC | UpdateFrequency.POLL,

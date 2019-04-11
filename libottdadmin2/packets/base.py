@@ -4,7 +4,6 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-from collections import namedtuple
 from functools import lru_cache, wraps
 from itertools import chain
 
@@ -14,7 +13,7 @@ from libottdadmin2.util import ensure_binary, ensure_text
 
 from struct import Struct
 
-from typing import Tuple, Any, Union, Iterable, Optional
+from typing import Tuple, Any, Union, Iterable, Optional, NamedTuple
 
 STRUCT_FORMAT_PREFIXES = {'@', '=', '<', '>', '!'}
 
@@ -79,6 +78,18 @@ def check_length(value, max_length, name="Value", include_null=True):
     return value
 
 
+def check_tuple_length(value, min_length=0, max_length=0, name="Value"):
+    length = len(value)
+    if length < min_length:
+        raise ValueError("%s must be longer than %d items (%d)" % (name, min_length, length))
+    elif length > max_length:
+        raise ValueError("%s must be smaller than %d items (%d)" % (name, max_length, length))
+    return value
+
+
+class PacketData(NamedTuple):
+    pass
+
 
 class Packet:
     __slots__ = [
@@ -134,12 +145,16 @@ class Packet:
     @staticmethod
     def register(klass):
         Packet._registry[klass.packet_id] = klass
-        klass.data = namedtuple(klass.__name__, klass.fields)
+        if not getattr(klass, 'data', None):
+            fields = [(x, Any) if not (isinstance(x, (list, tuple)) and len(x) == 2) else x
+                      for x in klass.fields]
+            klass.data = NamedTuple(klass.__name__, fields)
         return klass
 
     @classmethod
-    def create(cls, _out=None, **kwargs):
+    def create(cls, _out: Optional[Tuple[Any, ...]] = None, **kwargs):
         if _out and isinstance(_out, cls.data):
+            # noinspection PyProtectedMember, PyUnresolvedReferences
             kwargs = dict(_out._asdict())
         obj = cls()
         obj.encode(**kwargs)
@@ -269,7 +284,7 @@ class Packet:
         self._index = new_index
         return ret
 
-    def read_data(self, types: Iterable[Union[str, type]]) -> Tuple[Any, ...]:
+    def read_data(self, types: Iterable[Union[str, type]]) -> Iterable[Any]:
         batch = []
         ret = []
         for typ in types:
@@ -287,44 +302,45 @@ class Packet:
             ret.extend(self._read_batch(''.join(batch)))
         return ret
 
-    def _read_simple(self, typ: Union[str, type], amount: int) -> Tuple[Any]:
+    def _read_simple(self, typ: Union[str, type], amount: int) -> Iterable[Any]:
         return self.read_data([typ] * amount)
 
-    def read_bool(self, amount: int = 1) -> Tuple[bool, ...]:
+    def read_bool(self, amount: int = 1) -> Iterable[bool]:
         return tuple(map(bool, self._read_simple('B', amount)))
 
-    def read_byte(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_byte(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('B', amount)
 
-    def read_sshort(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_sshort(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('h', amount)
 
-    def read_ushort(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_ushort(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('H', amount)
 
-    def read_sint(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_sint(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('i', amount)
 
-    def read_uint(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_uint(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('I', amount)
 
-    def read_slong(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_slong(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('l', amount)
 
-    def read_ulong(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_ulong(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('L', amount)
 
-    def read_longlong(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_longlong(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('q', amount)
 
-    def read_ulonglong(self, amount: int = 1) -> Tuple[int, ...]:
+    def read_ulonglong(self, amount: int = 1) -> Iterable[int]:
         return self._read_simple('Q', amount)
 
-    def read_str(self, amount: int = 1) -> Tuple[str, ...]:
+    def read_str(self, amount: int = 1) -> Iterable[str]:
         return self._read_simple(str, amount)
 
     def encode(self, **kwargs):
         pass
 
-    def decode(self):
+    def decode(self) -> PacketData:
+        # noinspection PyCallingNonCallable
         return self.data()

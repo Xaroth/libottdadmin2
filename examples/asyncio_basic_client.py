@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import logging
 
-from libottdadmin2.client.asyncio import connect
+from libottdadmin2.client.asyncio import OttdAdminProtocol
 from libottdadmin2.constants import NETWORK_ADMIN_PORT
 
 parser = argparse.ArgumentParser(description='Connect to OpenTTD via asyncio')
@@ -15,5 +15,6 @@ logging.basicConfig(level=logging.DEBUG)
 if __name__ == "__main__":
     args = parser.parse_args()
     loop = asyncio.get_event_loop()
-    client = loop.run_until_complete(connect(loop=loop, host=args.host, port=args.port, password=args.password))
+    client = loop.run_until_complete(OttdAdminProtocol.connect(loop=loop, host=args.host, port=args.port,
+                                                               password=args.password))
     loop.run_until_complete(client.client_active)

@@ -4,7 +4,6 @@ except ImportError:
     from distutils.core import setup
 
 
-
 setup(
     name='libottdadmin2',
     version='0.0.3a1',

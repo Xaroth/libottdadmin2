@@ -121,24 +121,24 @@ class ErrorCode(IntEnum):
 
 
 class Colour(IntEnum):
-    COLOUR_DARK_BLUE = 0x00
-    COLOUR_PALE_GREEN = 0x01
-    COLOUR_PINK = 0x02
-    COLOUR_YELLOW = 0x03
-    COLOUR_RED = 0x04
-    COLOUR_LIGHT_BLUE = 0x05
-    COLOUR_GREEN = 0x06
-    COLOUR_DARK_GREEN = 0x07
-    COLOUR_BLUE = 0x08
-    COLOUR_CREAM = 0x09
-    COLOUR_MAUVE = 0x0A
-    COLOUR_PURPLE = 0x0B
-    COLOUR_ORANGE = 0x0C
-    COLOUR_BROWN = 0x0D
-    COLOUR_GREY = 0x0E
-    COLOUR_WHITE = 0x0F
-    COLOUR_END = 0x10
-    INVALID_COLOUR = 0xFF
+    DARK_BLUE = 0x00
+    PALE_GREEN = 0x01
+    PINK = 0x02
+    YELLOW = 0x03
+    RED = 0x04
+    LIGHT_BLUE = 0x05
+    GREEN = 0x06
+    DARK_GREEN = 0x07
+    BLUE = 0x08
+    CREAM = 0x09
+    MAUVE = 0x0A
+    PURPLE = 0x0B
+    ORANGE = 0x0C
+    BROWN = 0x0D
+    GREY = 0x0E
+    WHITE = 0x0F
+    END = 0x10
+    INVALID = 0xFF
 
 
 class Landscape(IntEnum):
@@ -146,3 +146,43 @@ class Landscape(IntEnum):
     ARCTIC = 0x01
     TROPIC = 0x02
     TOYLAND = 0x03
+
+
+class Language(IntEnum):
+    ANY = 0x00
+    ENGLISH = 0x01
+    GERMAN = 0x02
+    FRENCH = 0x03
+    BRAZILIAN = 0x04
+    BULGARIAN = 0x05
+    CHINESE = 0x06
+    CZECH = 0x07
+    DANISH = 0x08
+    DUTCH = 0x09
+    ESPERANTO = 0x0A
+    FINNISH = 0x0B
+    HUNGARIAN = 0x0C
+    ICELANDIC = 0x0D
+    ITALIAN = 0x0E
+    JAPANESE = 0x0F
+    KOREAN = 0x10
+    LITHUANIAN = 0x11
+    NORWEGIAN = 0x12
+    POLISH = 0x13
+    PORTUGUESE = 0x14
+    ROMANIAN = 0x15
+    RUSSIAN = 0x16
+    SLOVAK = 0x17
+    SLOVENIAN = 0x18
+    SPANISH = 0x19
+    SWEDISH = 0x1A
+    TURKISH = 0x1B
+    UKRAINIAN = 0x1C
+    AFRIKAANS = 0x1D
+    CROATIAN = 0x1E
+    CATALAN = 0x1F
+    ESTONIAN = 0x20
+    GALICIAN = 0x21
+    GREEK = 0x22
+    LATVIAN = 0x23
+    COUNT = 0x24

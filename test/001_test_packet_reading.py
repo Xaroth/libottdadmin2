@@ -22,7 +22,7 @@ class TestPacketReading(unittest.TestCase):
             for i in range(5, 10):
                 with self.subTest(type=typ, i=i):
                     pkt.reset(clear=True)
-                    val = [random.randint(0, 127) for x in range(i)]
+                    val = [random.randint(0, 127) for _ in range(i)]
                     writer(*val)
                     self.assertIsNotNone(pkt.buffer, "Buffer is empty after writing")
                     pkt.reset(clear=False)

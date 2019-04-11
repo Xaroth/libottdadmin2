@@ -8,10 +8,18 @@ from asyncio import transports
 from typing import Tuple, Any, Optional
 
 from libottdadmin2.packets import AdminJoin, Packet, AdminQuit
-from libottdadmin2.util import LoggableObject, camel_to_snake
+from libottdadmin2.util import loggable, camel_to_snake
 
 
-class OttdClientMixIn(LoggableObject):
+@loggable
+class OttdClientMixIn:
+    _buffer = None  # Type: bytes
+    _password = None  # Type: Optional[str]
+    _user_agent = None  # Type: Optional[str]
+    _version = None  # Type: Optional[str]
+    transport = None  # Type: Optional[transports.Transport]
+    peername = None  # Type: Tuple[str, int]
+
     def configure(self, password: Optional[str] = None, user_agent: Optional[str] = None,
                   version: Optional[str] = None):
         from libottdadmin2 import VERSION
@@ -44,6 +52,7 @@ class OttdClientMixIn(LoggableObject):
         func_name = camel_to_snake(packet.__class__.__name__)
         handler = getattr(self, "on_%s" % func_name, None)
         if handler and callable(handler):
+            # noinspection PyProtectedMember,PyUnresolvedReferences
             handler(**data._asdict())
         handler = getattr(self, "on_%s_raw" % func_name, None)
         if handler and callable(handler):
@@ -60,6 +69,10 @@ class OttdClientMixIn(LoggableObject):
 
     def disconnect(self) -> None:
         self.send_packet(AdminQuit.create())
+        self.connection_closed()
+
+    def on_server_shutdown(self):
+        self.log.debug("Server is shutting down")
         self.connection_closed()
 
 

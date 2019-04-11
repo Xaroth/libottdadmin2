@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from libottdadmin2.client.sync import OttdSocket, DefaultSelector, reader_for_socket
+from libottdadmin2.client.sync import OttdSocket, DefaultSelector
 from libottdadmin2.constants import NETWORK_ADMIN_PORT
 
 parser = argparse.ArgumentParser(description='Connect to OpenTTD via asyncio')
@@ -17,9 +17,9 @@ if __name__ == "__main__":
     client = OttdSocket(password=args.password)
     client.connect((args.host, args.port))
     client.setblocking(False)
-    reader_for_socket(selector, client)
+    client.register_to_selector(selector)
 
-    while True:
+    while len(selector.get_map()):
         events = selector.select()
         for key, mask in events:
             callback = key.data

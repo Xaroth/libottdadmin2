@@ -12,20 +12,10 @@ from typing import Union, Optional
 from libottdadmin2.client.common import OttdClientMixIn
 from libottdadmin2.constants import SEND_MTU
 from libottdadmin2.packets import Packet
+from libottdadmin2.util import loggable
 
 
-def reader_for_socket(selector: _BaseSelectorImpl, sock: socket.socket):
-    def _read(conn: OttdSocket, mask):
-        data = conn.recv(SEND_MTU)
-        if data:
-            conn.data_received(data)
-        else:
-            selector.unregister(conn)
-            conn.connection_lost(exc=None)
-
-    selector.register(sock, EVENT_READ, _read)
-
-
+@loggable
 class OttdSocket(OttdClientMixIn, socket.socket):
     def __init__(self, password: Optional[str] = None, user_agent: Optional[str] = None, version: Optional[str] = None):
         super().__init__(socket.AF_INET, socket.SOCK_STREAM)
@@ -33,6 +23,7 @@ class OttdSocket(OttdClientMixIn, socket.socket):
         self._connected = False
         self._last_error = None
         self._buffer = b''
+        self._selector = None  # Type: Optional[_BaseSelectorImpl]
         self.configure(password=password, user_agent=user_agent, version=version)
 
     def connect(self, address: Union[tuple, str, bytes]) -> bool:
@@ -57,6 +48,13 @@ class OttdSocket(OttdClientMixIn, socket.socket):
         self._connected = False
         self.close()
 
+    def close(self) -> None:
+        super().close()
+        self._connected = False
+        if self._selector:
+            self._selector.unregister(self)
+            self._selector = None
+
     def send_packet(self, packet: Packet):
         try:
             self.sendall(packet.write_to_buffer())
@@ -64,9 +62,20 @@ class OttdSocket(OttdClientMixIn, socket.socket):
             self._last_error = e
             self.connection_lost(e)
 
+    def register_to_selector(self, selector: _BaseSelectorImpl):
+        # noinspection PyUnusedLocal
+        def _read(conn: OttdSocket, mask):
+            data = conn.recv(SEND_MTU)
+            if data:
+                conn.data_received(data)
+            else:
+                conn.connection_lost(exc=None)
+
+        self._selector = selector
+        selector.register(self, EVENT_READ, _read)
+
 
 __all__ = [
     'DefaultSelector',
-    'reader_for_socket',
     'OttdSocket',
 ]

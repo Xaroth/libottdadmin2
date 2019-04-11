@@ -25,37 +25,14 @@ def datetime_to_gamedate(dt):
     return (dt - GAMEDATE_BASE_DATE).days + GAMEDATE_BASE_OFFSET
 
 
-class LoggableObject(object):
-    """
-    Loggable Object MixIn.
-
-    This exposes the .log property, which dynamically creates a logging.logger formatted for the class.
-    """
-
-    @property
-    def log(self):
-        """
-        The log property. retrieving this the first time will generate a logging.logger for the inheriting class.
-        """
-        log = getattr(self, '_logger', None)
-        if log is None:
-            log = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__name__))
-            setattr(self, '_logger', log)
-        return log
-
-    def reset_log(self):
-        """
-        Resets the current created logger.
-        """
-        if hasattr(self, '_logger'):
-            delattr(self, '_logger')
+def loggable(klass: type):
+    klass.log = logging.getLogger("%s.%s" % (klass.__module__, klass.__name__))
+    return klass
 
 
 class SimpleDataclass:
     def __init__(self, **kwargs):
-        for key, val in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, val)
+        self.update(**kwargs)
 
     def update(self, **kwargs):
         for key, val in kwargs.items():
@@ -94,7 +71,7 @@ def ensure_text(s, encoding='utf-8', errors='strict'):
 
 
 __all__ = [
-    "LoggableObject",
+    "loggable",
     "SimpleDataclass",
     "gamedate_to_datetime",
     "datetime_to_gamedate",
