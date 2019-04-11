@@ -9,7 +9,7 @@ from datetime import datetime
 from libottdadmin2.enums import UpdateType, UpdateFrequency, PollExtra, ErrorCode, CompanyRemoveReason
 from libottdadmin2.packets import AdminPoll, Packet
 from libottdadmin2.packets import AdminUpdateFrequency
-from packets import ServerCompanyInfo
+from libottdadmin2.packets import ServerCompanyInfo
 
 
 class TrackingMixIn:
