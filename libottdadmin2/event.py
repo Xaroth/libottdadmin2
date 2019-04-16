@@ -4,10 +4,11 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-from .util import LoggableObject
+from libottdadmin2.util import LoggableObject, get_method_self
+
 
 class Event(LoggableObject):
-    def __init__(self, origin = None):
+    def __init__(self, origin=None):
         self._handlers = []
         self._origin = origin
 
@@ -26,17 +27,17 @@ class Event(LoggableObject):
         for handler in self._handlers:
             self.log.debug("Calling handler: '%r'", handler)
             try:
-                handler(origin=origin, *args, **kwargs) 
+                handler(origin=origin, *args, **kwargs)
             except TypeError:
                 handler(*args, **kwargs)
 
-    def clear(self, from_object = None):
+    def clear(self, from_object=None):
         if from_object is None:
             self.log.debug("Removing all handlers")
             self._handlers = []
         else:
             self.log.debug("Removing all handlers from object '%r'", from_object)
-            for handler in self._handlers[:]: 
+            for handler in self._handlers[:]:
                 # Create a copy, since we'll be editing the base list.
-                if handler.im_self == from_object:
+                if get_method_self(handler) == from_object:
                     self -= handler

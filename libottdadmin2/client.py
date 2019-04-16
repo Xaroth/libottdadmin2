@@ -6,36 +6,37 @@
 
 #
 # Helper imports:
-#  This allows you to use the select.poll functionality 
+#  This allows you to use the select.poll functionality
 #  ( http://docs.python.org/2/library/select.html#poll-objects )
 #  While automatically using epoll if it's available.
 #  .. Keep in mind to multiply the timeout for poll.poll()
 #     with  POLL_MOD
 #
+from libottdadmin2.adminconnection import AdminConnection
+from libottdadmin2.event import Event
+from libottdadmin2.packets import *  # noqa
+from libottdadmin2.util import integer_types
+
+import socket
 
 USES_POLL = USES_EPOLL = False
 try:
     from select import epoll as poll, EPOLLIN as POLLIN, \
-                       EPOLLOUT as POLLOUT, EPOLLERR as POLLERR, \
-                       EPOLLHUP as POLLHUP, EPOLLPRI as POLLPRI
-    POLL_MOD   = 1.0
+        EPOLLOUT as POLLOUT, EPOLLERR as POLLERR, \
+        EPOLLHUP as POLLHUP, EPOLLPRI as POLLPRI
+    POLL_MOD = 1.0
     USES_EPOLL = True
 except ImportError:
     try:
-        from select import poll, POLLIN, POLLOUT, POLLERR, POLLHUP, POLLPRI
-        POLL_MOD   = 1000.0
-        USES_POLL  = True
+        from select import poll, POLLIN, POLLOUT, POLLERR, POLLHUP, POLLPRI  # noqa
+        POLL_MOD = 1000.0
+        USES_POLL = True
     except ImportError:
         pass
 
-from .packets import *
-from .event import Event
-from .adminconnection import AdminConnection
-
-import socket
 
 class AdminClient(AdminConnection):
-    _settable_args = AdminConnection._settable_args + ['timeout',]
+    _settable_args = AdminConnection._settable_args + ['timeout']
     """
     The AdminClient class is a wrapper around the AdminConnection, allowing
     a user to create a bot more easy.
@@ -50,12 +51,13 @@ class AdminClient(AdminConnection):
             self._poll_registered = False
             try:
                 self._pollobj.unregister(self.fileno())
-            except socket.error as error:
+            except socket.error:
                 pass
             finally:
                 self._pollobj = None
 
     _timeout = 1.0
+
     @property
     def timeout(self):
         return self._timeout
@@ -64,14 +66,14 @@ class AdminClient(AdminConnection):
     def timeout(self, value):
         self._timeout = float(value)
 
-    def poll(self, timeout = None):
+    def poll(self, timeout=None):
         """
         Polls the connection for a maximum of <timeout> seconds
 
         Returns False if the poll mechanism has been deconstructed, or
         when we are not (yet) connected to the server.
         Returns None if the connection has been lost.
-        Returns a list of (PacketType, Data) for all packets received, 
+        Returns a list of (PacketType, Data) for all packets received,
         however, only one packet is read per poll call for now (this
         might change in the future)
         """
@@ -96,7 +98,6 @@ class AdminClient(AdminConnection):
                 self.force_disconnect()
         return packets
 
-
     def __init_events__(self):
         super(AdminClient, self).__init_events__()
 
@@ -111,7 +112,7 @@ class AdminClient(AdminConnection):
 
         self.protocol_received += self.on_protocol_received
         self.map_info_received += self.on_map_info_received
-        
+
         self._packet_handlers = {}
         self._packet_handlers[ServerProtocol.packetID] = self.protocol_received
         self._packet_handlers[ServerWelcome.packetID] = self.map_info_received
@@ -121,7 +122,7 @@ class AdminClient(AdminConnection):
         self.__init_poll__()
 
         self.protocol_info = {}
-        self.map_info = {}        
+        self.map_info = {}
 
     def on_packet(self, packetType, data):
         """
@@ -133,7 +134,7 @@ class AdminClient(AdminConnection):
         the raw data, rather than decoded information
         """
         pid = packetType
-        if not isinstance(pid, (int,long)):
+        if not isinstance(pid, integer_types):
             pid = packetType.packetID
         if pid in self._packet_handlers:
             self._packet_handlers[pid](data)

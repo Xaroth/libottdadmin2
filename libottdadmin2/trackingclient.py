@@ -13,53 +13,56 @@
 
 #
 # Helper imports:
-#  This allows you to use the select.poll functionality 
+#  This allows you to use the select.poll functionality
 #  ( http://docs.python.org/2/library/select.html#poll-objects )
 #  While automatically using epoll if it's available.
 #  .. Keep in mind to multiply the timeout for poll.poll()
 #     with  POLL_MOD
 #
+import socket
+import time
+from collections import defaultdict
+from datetime import datetime
+
+from libottdadmin2.adminconnection import AdminConnection
+from libottdadmin2.enums import *  # noqa
+from libottdadmin2.event import Event
+from libottdadmin2.packets import *  # noqa
+from libottdadmin2.util import integer_types
+
 
 USES_POLL = USES_EPOLL = False
 try:
     from select import epoll as poll, EPOLLIN as POLLIN, \
-                       EPOLLOUT as POLLOUT, EPOLLERR as POLLERR, \
-                       EPOLLHUP as POLLHUP, EPOLLPRI as POLLPRI
-    POLL_MOD   = 1.0
+        EPOLLOUT as POLLOUT, EPOLLERR as POLLERR, \
+        EPOLLHUP as POLLHUP, EPOLLPRI as POLLPRI
+    POLL_MOD = 1.0
     USES_EPOLL = True
 except ImportError:
     try:
-        from select import poll, POLLIN, POLLOUT, POLLERR, POLLHUP, POLLPRI
-        POLL_MOD   = 1000.0
-        USES_POLL  = True
+        from select import poll, POLLIN, POLLOUT, POLLERR, POLLHUP, POLLPRI  # noqa
+        POLL_MOD = 1000.0
+        USES_POLL = True
     except ImportError:
         pass
 
-from .adminconnection import AdminConnection
-from .packets import *
-from .event import Event
-from .enums import *
-
-from collections import defaultdict
-
-from datetime import datetime
-import time
-import socket
 
 def handles_packet(*items):
-    packets = [x if isinstance(x, (int, long)) else x.packetID for x in items]
+    packets = [x if isinstance(x, integer_types) else x.packetID for x in items]
+
     def __inner(func):
         func.handles_packet = packets
         return func
     return __inner
 
+
 class MappingObject(object):
-    def __init__(self, kwargs = None):
+    def __init__(self, kwargs=None):
         if kwargs is None:
             kwargs = {}
         self.update(kwargs, True)
 
-    def update(self, kwargs = None, set_null = False):
+    def update(self, kwargs=None, set_null=False):
         if kwargs is None:
             kwargs = {}
         for key, newkey in self._mapping:
@@ -75,6 +78,7 @@ class MappingObject(object):
         obj.__dict__.update(self.__dict__)
         return obj
 
+
 class MapInfo(MappingObject):
     _mapping = [
         ('x', 'x'),
@@ -85,6 +89,7 @@ class MapInfo(MappingObject):
         ('seed', 'seed'),
     ]
 
+
 class ServerInfo(MappingObject):
     _mapping = [
         ('version', 'version'),
@@ -92,11 +97,13 @@ class ServerInfo(MappingObject):
         ('dedicated', 'dedicated'),
     ]
 
+
 class ProtocolInfo(MappingObject):
     _mapping = [
         ('version', 'version'),
         ('settings', 'settings'),
     ]
+
 
 class ClientInfo(MappingObject):
     _mapping = [
@@ -107,6 +114,7 @@ class ClientInfo(MappingObject):
         ('joindate', 'joindate'),
         ('play_as', 'play_as'),
     ]
+
 
 class CompanyInfo(MappingObject):
     _mapping = [
@@ -120,11 +128,13 @@ class CompanyInfo(MappingObject):
         ('bankrupcyCounter', 'bankrupcyCounter'),
         ('shareholders', 'shareholders'),
     ]
+
     def __init__(self, *args, **kwargs):
         super(CompanyInfo, self).__init__(*args, **kwargs)
         self.vehicles = VehicleStats()
         self.stations = VehicleStats()
-        self.economy  = CompanyEconomy()
+        self.economy = CompanyEconomy()
+
 
 class CompanyEconomy(MappingObject):
     _mapping = [
@@ -135,6 +145,7 @@ class CompanyEconomy(MappingObject):
         ('history', 'history'),
     ]
 
+
 class VehicleStats(MappingObject):
     _mapping = [
         ('train', 'train'),
@@ -144,65 +155,71 @@ class VehicleStats(MappingObject):
         ('ship', 'ship'),
     ]
 
+
 class TrackingEvents(object):
     def __init__(self):
-        self.connected      = Event()
-        self.disconnected   = Event()
+        self.connected = Event()
+        self.disconnected = Event()
 
-        self.shutdown       = Event()
-        self.new_game       = Event()
+        self.shutdown = Event()
+        self.new_game = Event()
 
-        self.new_map        = Event()
-        self.protocol       = Event()
+        self.new_map = Event()
+        self.protocol = Event()
 
-        self.datechanged    = Event()
+        self.datechanged = Event()
 
-        self.clientinfo     = Event()
-        self.clientjoin     = Event()
-        self.clientupdate   = Event()
-        self.clientquit     = Event()
+        self.clientinfo = Event()
+        self.clientjoin = Event()
+        self.clientupdate = Event()
+        self.clientquit = Event()
 
-        self.companyinfo    = Event()
-        self.companynew     = Event()
-        self.companyupdate  = Event()
-        self.companyremove  = Event()
-        self.companystats   = Event()
+        self.companyinfo = Event()
+        self.companynew = Event()
+        self.companyupdate = Event()
+        self.companyremove = Event()
+        self.companystats = Event()
         self.companyeconomy = Event()
 
-        self.chat           = Event()
-        self.rcon           = Event()
-        self.rconend        = Event()
-        self.console        = Event()
-        self.cmdnames       = Event()
-        self.cmdlogging     = Event()
+        self.chat = Event()
+        self.rcon = Event()
+        self.rconend = Event()
+        self.console = Event()
+        self.cmdnames = Event()
+        self.cmdlogging = Event()
 
-        self.pong           = Event()
+        self.pong = Event()
+
 
 class TrackingAdminClient(AdminConnection):
     _settable_args = AdminConnection._settable_args + ['timeout', 'poll_once']
     _timeout = 0.25
     _poll_once = False
+
     @property
     def timeout(self):
         return self._timeout
+
     @timeout.setter
     def timeout(self, value):
         self._timeout = float(value)
+
     @property
     def poll_once(self):
         return self._poll_once
+
     @poll_once.setter
     def poll_once(self, value):
         self._poll_once = bool(value)
 
     update_types = [
-        (UpdateType.CLIENT_INFO,        UpdateFrequency.AUTOMATIC),
-        (UpdateType.COMPANY_INFO,       UpdateFrequency.AUTOMATIC),
-        (UpdateType.COMPANY_ECONOMY,    UpdateFrequency.MONTHLY),
-        (UpdateType.COMPANY_STATS,      UpdateFrequency.MONTHLY),
-        (UpdateType.CHAT,               UpdateFrequency.AUTOMATIC),
-        (UpdateType.CONSOLE,            UpdateFrequency.AUTOMATIC),
-        (UpdateType.DATE,               UpdateFrequency.DAILY),
+        (UpdateType.CLIENT_INFO, UpdateFrequency.AUTOMATIC),
+        (UpdateType.COMPANY_INFO, UpdateFrequency.AUTOMATIC),
+        (UpdateType.COMPANY_ECONOMY, UpdateFrequency.MONTHLY),
+        (UpdateType.COMPANY_STATS, UpdateFrequency.MONTHLY),
+        (UpdateType.CHAT, UpdateFrequency.AUTOMATIC),
+        (UpdateType.CONSOLE, UpdateFrequency.AUTOMATIC),
+        (UpdateType.DATE, UpdateFrequency.DAILY),
     ]
     poll_types = [
         UpdateType.CLIENT_INFO,
@@ -228,14 +245,14 @@ class TrackingAdminClient(AdminConnection):
             finally:
                 self._pollobj = None
 
-    def poll(self, timeout = None):
+    def poll(self, timeout=None):
         """
         Polls the connection for a maximum of <timeout> seconds
 
         Returns False if the poll mechanism has been deconstructed, or
         when we are not (yet) connected to the server.
         Returns None if the connection has been lost.
-        Returns a list of (PacketType, Data) for all packets received, 
+        Returns a list of (PacketType, Data) for all packets received,
         however, only one packet is read per poll call for now (this
         might change in the future)
         """
@@ -278,7 +295,7 @@ class TrackingAdminClient(AdminConnection):
             setattr(obj, prop, getattr(self, prop, None))
         return obj
 
-    def __init__(self, events = None):
+    def __init__(self, events=None):
         self.events = events
         super(TrackingAdminClient, self).__init__()
         self.__init_poll__()
@@ -286,13 +303,10 @@ class TrackingAdminClient(AdminConnection):
         self.pingrequests = {}
 
     def __init_events__(self):
-        #super(TrackingAdminClient, self).__init_events__()
         if self.events is None:
             self.events = TrackingEvents()
 
     def __init_handlers__(self):
-        #super(TrackingAdminClient, self).__init_handlers__()
-
         self.packet_handlers = defaultdict(list)
 
         for func in dir(self):
@@ -305,11 +319,11 @@ class TrackingAdminClient(AdminConnection):
             for pid in packets:
                 self.packet_handlers[pid].append(func)
 
-    def disconnected(self, can_retry): # pylint: disable=E0202
+    def disconnected(self, can_retry):  # pylint: disable=E0202
         self.__deinit_poll__()
         self.events.disconnected(can_retry)
 
-    def connected(self): # pylint: disable=E0202
+    def connected(self):  # pylint: disable=E0202
         self.authenticate()
         self.events.connected()
 
@@ -321,18 +335,17 @@ class TrackingAdminClient(AdminConnection):
 
     def handle_packet(self, packetType, packetData):
         pid = packetType
-        if not isinstance(pid, (int,long)):
+        if not isinstance(pid, integer_types):
             pid = packetType.packetID
 
         for handler in self.packet_handlers[pid]:
             handler(**(packetData or {}))
 
-
     def ping(self):
         now = datetime.now()
-        index = len(self.pingrequests.keys()) + 1
+        index = len(list(self.pingrequests.keys())) + 1
         self.pingrequests[index] = now
-        self.send_packet(AdminPing, payload = index)
+        self.send_packet(AdminPing, payload=index)
 
     @handles_packet(ServerPong)
     def _server_pong(self, payload):
@@ -352,14 +365,14 @@ class TrackingAdminClient(AdminConnection):
         self.events.protocol(self.protocol)
 
         for updType, updFreq in self.update_types:
-            self.send_packet(AdminUpdateFrequency, updateType = updType, updateFreq = updFreq) 
+            self.send_packet(AdminUpdateFrequency, updateType=updType, updateFreq=updFreq)
 
-    mapinfo     = MapInfo()
-    serverinfo  = ServerInfo()
-    date        = datetime.min
+    mapinfo = MapInfo()
+    serverinfo = ServerInfo()
+    date = datetime.min
 
-    clients     = {}
-    companies   = {}
+    clients = {}
+    companies = {}
 
     @handles_packet(ServerWelcome)
     def _server_welcome(self, **kwargs):
@@ -369,17 +382,17 @@ class TrackingAdminClient(AdminConnection):
         self.events.new_map(self.mapinfo, self.serverinfo)
         self.clients = {}
         self.companies = {255: CompanyInfo({
-                'companyID': 255,
-                'name': 'spectators',
-                'manager': 'Spec Tator',
-                'colour': 0,
-                'passworded': False, 
-                'startYear': (self.mapinfo.startyear or datetime.mine).year,
-                'isAI': False,
-            })}
+            'companyID': 255,
+            'name': 'spectators',
+            'manager': 'Spec Tator',
+            'colour': 0,
+            'passworded': False,
+            'startYear': (self.mapinfo.startyear or datetime.min).year,
+            'isAI': False,
+        })}
         self.date = datetime.min
         for pollType in self.poll_types:
-            self.send_packet(AdminPoll, pollType = pollType, extra = PollExtra.ALL)
+            self.send_packet(AdminPoll, pollType=pollType, extra=PollExtra.ALL)
 
     @handles_packet(ServerDate)
     def _server_date(self, date):
@@ -416,7 +429,7 @@ class TrackingAdminClient(AdminConnection):
         self.events.clientupdate(old, client, changed)
 
     @handles_packet(ServerClientError, ServerClientQuit)
-    def _server_client_remove(self, clientID, errorcode = None):
+    def _server_client_remove(self, clientID, errorcode=None):
         client = self.clients.get(clientID, clientID)
         self.events.clientquit(client, errorcode)
         if clientID in self.clients:

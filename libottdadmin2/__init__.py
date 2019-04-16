@@ -4,4 +4,4 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-VERSION = "0.0.1"
+VERSION = "0.0.2a1"

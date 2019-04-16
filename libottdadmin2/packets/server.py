@@ -4,22 +4,25 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-from .registry import receive
-from .base import ReceivingPacket, Struct
-from ..util import gamedate_to_datetime
+from libottdadmin2.packets.registry import receive
+from libottdadmin2.packets.base import ReceivingPacket, Struct
+from libottdadmin2.util import gamedate_to_datetime
 
 try:
     import json
 except ImportError:
-    import simplejson as json 
+    import simplejson as json
+
 
 @receive.packet
 class ServerFull(ReceivingPacket):
     packetID = 100
 
+
 @receive.packet
 class ServerBanned(ReceivingPacket):
     packetID = 101
+
 
 @receive.packet
 class ServerError(ReceivingPacket):
@@ -30,7 +33,8 @@ class ServerError(ReceivingPacket):
         errorcode = self.unpack(self.format, data)
         return {
             'errorcode': errorcode,
-            }
+        }
+
 
 @receive.packet
 class ServerProtocol(ReceivingPacket):
@@ -50,9 +54,10 @@ class ServerProtocol(ReceivingPacket):
             index += self.inner_format.size
             settings[key] = val
         return {
-            'version':      version, 
-            'settings':     settings,
-            }
+            'version': version,
+            'settings': settings,
+        }
+
 
 @receive.packet
 class ServerWelcome(ReceivingPacket):
@@ -63,33 +68,36 @@ class ServerWelcome(ReceivingPacket):
     def decode(self, data):
         index = 0
         name = self.unpack_str(data, index)
-        index += len(name)+1
+        index += len(name) + 1
         version = self.unpack_str(data, index)
-        index += len(version)+2
-        dedicated = bool(self.unpack(self.format_bool, data[index-1]))
+        index += len(version) + 2
+        dedicated = bool(self.unpack(self.format_bool, data[index - 1:index]))
         map_name = self.unpack_str(data, index)
-        index += len(map_name)+1
+        index += len(map_name) + 1
         seed, landscape, startyear, x, y = self.unpack(self.format, data, index)
         return {
-            'name':         name,
-            'version':      version,
-            'dedicated':    dedicated,
-            'map_name':     map_name,
-            'seed':         seed,
-            'landscape':    landscape,
+            'name': name,
+            'version': version,
+            'dedicated': dedicated,
+            'map_name': map_name,
+            'seed': seed,
+            'landscape': landscape,
             'startyear_orig': startyear,
-            'startyear':    gamedate_to_datetime(startyear),
-            'x':            x,
-            'y':            y,
-            }
+            'startyear': gamedate_to_datetime(startyear),
+            'x': x,
+            'y': y,
+        }
+
 
 @receive.packet
 class ServerNewGame(ReceivingPacket):
     packetID = 105
 
+
 @receive.packet
 class ServerShutdown(ReceivingPacket):
     packetID = 106
+
 
 @receive.packet
 class ServerDate(ReceivingPacket):
@@ -99,8 +107,9 @@ class ServerDate(ReceivingPacket):
     def decode(self, data):
         date = self.unpack(self.format, data)
         return {
-            'date':         gamedate_to_datetime(date),
+            'date': gamedate_to_datetime(date),
         }
+
 
 @receive.packet
 class ServerClientJoin(ReceivingPacket):
@@ -110,8 +119,9 @@ class ServerClientJoin(ReceivingPacket):
     def decode(self, data):
         clientID = self.unpack(self.format, data)
         return {
-            'clientID':     clientID,
+            'clientID': clientID,
         }
+
 
 @receive.packet
 class ServerClientInfo(ReceivingPacket):
@@ -123,19 +133,20 @@ class ServerClientInfo(ReceivingPacket):
         clientID = self.unpack(self.format_id, data)
         index = self.format_id.size
         hostname = self.unpack_str(data, index)
-        index += len(hostname)+1
+        index += len(hostname) + 1
         name = self.unpack_str(data, index)
-        index += len(name)+1
+        index += len(name) + 1
         language, joindate, play_as = self.unpack(self.format, data, index)
 
         return {
-            'clientID':     clientID,
-            'hostname':     hostname,
-            'name':         name,
-            'language':     language,
-            'joindate':     gamedate_to_datetime(joindate),
-            'play_as':      play_as,
+            'clientID': clientID,
+            'hostname': hostname,
+            'name': name,
+            'language': language,
+            'joindate': gamedate_to_datetime(joindate),
+            'play_as': play_as,
         }
+
 
 @receive.packet
 class ServerClientUpdate(ReceivingPacket):
@@ -147,17 +158,19 @@ class ServerClientUpdate(ReceivingPacket):
         clientID = self.unpack(self.format_id, data)
         index = self.format_id.size
         name = self.unpack_str(data, index)
-        index += len(name)+1
+        index += len(name) + 1
         play_as = self.unpack(self.format, data, index)
         return {
-            'clientID':     clientID,
-            'name':         name,
-            'play_as':      play_as,
+            'clientID': clientID,
+            'name': name,
+            'play_as': play_as,
         }
+
 
 @receive.packet
 class ServerClientQuit(ServerClientJoin):
     packetID = 111
+
 
 @receive.packet
 class ServerClientError(ReceivingPacket):
@@ -167,9 +180,10 @@ class ServerClientError(ReceivingPacket):
     def decode(self, data):
         clientID, errorcode = self.unpack(self.format, data)
         return {
-            'clientID':     clientID,
-            'errorcode':    errorcode,
+            'clientID': clientID,
+            'errorcode': errorcode,
         }
+
 
 @receive.packet
 class ServerCompanyNew(ReceivingPacket):
@@ -179,14 +193,15 @@ class ServerCompanyNew(ReceivingPacket):
     def decode(self, data):
         companyID = self.unpack(self.format, data)
         return {
-            'companyID':    companyID,
+            'companyID': companyID,
         }
+
 
 @receive.packet
 class ServerCompanyInfo(ReceivingPacket):
     packetID = 114
     format_id = Struct.create("B")
-    format_quarters_bankruptcy  = Struct.create("B")
+    format_quarters_bankruptcy = Struct.create("B")
     format_shareholders = Struct.create("BBBB")
     format_info = Struct.create("BBIB")
 
@@ -194,25 +209,26 @@ class ServerCompanyInfo(ReceivingPacket):
         companyID = self.unpack(self.format_id, data)
         index = self.format_id.size
         name = self.unpack_str(data, index)
-        index += len(name)+1
+        index += len(name) + 1
         manager = self.unpack_str(data, index)
-        index += len(manager)+1
+        index += len(manager) + 1
         colour, passworded, startYear, isAI = self.unpack(self.format_info, data, index)
         index += self.format_info.size
         info = {
-            'companyID':    companyID,
-            'name':         name, 
-            'manager':      manager,
-            'colour':       colour,
-            'passworded':   passworded,
-            'startYear':    startYear,
-            'isAI':         isAI,
+            'companyID': companyID,
+            'name': name,
+            'manager': manager,
+            'colour': colour,
+            'passworded': passworded,
+            'startYear': startYear,
+            'isAI': isAI,
         }
         if len(data) > index:
             info['bankrupcyCounter'] = self.unpack(self.format_quarters_bankruptcy, data, index)
             index += self.format_quarters_bankruptcy.size
             info['shareholders'] = self.unpack(self.format_shareholders, data, index)
-        return info 
+        return info
+
 
 @receive.packet
 class ServerCompanyUpdate(ReceivingPacket):
@@ -224,21 +240,21 @@ class ServerCompanyUpdate(ReceivingPacket):
         companyID = self.unpack(self.format_id, data)
         index = self.format_id.size
         name = self.unpack_str(data, index)
-        index += len(name)+1
+        index += len(name) + 1
         manager = self.unpack_str(data, index)
-        index += len(manager)+1
-        colour, passworded, bankrupcyCounter, \
-                s1, s2, s3, s4 = self.unpack(self.format_info, data, index)
-        shares = [s1,s2,s3,s4]
+        index += len(manager) + 1
+        colour, passworded, bankrupcyCounter, s1, s2, s3, s4 = self.unpack(self.format_info, data, index)
+        shares = [s1, s2, s3, s4]
         return {
-            'companyID':    companyID,
-            'name':         name, 
-            'manager':      manager,
-            'colour':       colour,
-            'passworded':   passworded,
+            'companyID': companyID,
+            'name': name,
+            'manager': manager,
+            'colour': colour,
+            'passworded': passworded,
             'bankrupcyCounter': bankrupcyCounter,
             'shareholders': shares,
         }
+
 
 @receive.packet
 class ServerCompanyRemove(ReceivingPacket):
@@ -248,9 +264,10 @@ class ServerCompanyRemove(ReceivingPacket):
     def decode(self, data):
         companyID, reason = self.unpack(self.format, data)
         return {
-            'companyID':    companyID,
-            'reason':       reason,
+            'companyID': companyID,
+            'reason': reason,
         }
+
 
 @receive.packet
 class ServerCompanyEconomy(ReceivingPacket):
@@ -259,27 +276,26 @@ class ServerCompanyEconomy(ReceivingPacket):
     format_stats = Struct.create("qHH")
 
     def decode(self, data):
-        companyID, money, currentLoan, income, \
-                   delivered = self.unpack(self.format, data)
+        companyID, money, currentLoan, income, delivered = self.unpack(self.format, data)
         index = self.format.size
         stats = []
         for i in range(2):
-            companyValue, performanceHistory, \
-                          deliveredCargo = self.unpack(self.format_stats, data, index)
+            companyValue, performanceHistory, deliveredCargo = self.unpack(self.format_stats, data, index)
             index += self.format_stats.size
             stats.append({
                 'companyValue': companyValue,
                 'performanceHistory': performanceHistory,
                 'deliveredCargo': deliveredCargo,
-                })
+            })
         return {
-            'companyID':    companyID,
-            'money':        money,
-            'currentLoan':  currentLoan,
-            'income':       income,
+            'companyID': companyID,
+            'money': money,
+            'currentLoan': currentLoan,
+            'income': income,
             'deliveredCargo': delivered,
-            'history':      stats
+            'history': stats
         }
+
 
 @receive.packet
 class ServerCompanyStats(ReceivingPacket):
@@ -295,16 +311,17 @@ class ServerCompanyStats(ReceivingPacket):
             train, lorry, bus, plane, ship = self.unpack(self.format_stats, data, index)
             index += self.format_stats.size
             stats[statType] = {
-                'train':    train,
-                'lorry':    lorry,
-                'bus':      bus,
-                'plane':    plane,
-                'ship':     ship,
+                'train': train,
+                'lorry': lorry,
+                'bus': bus,
+                'plane': plane,
+                'ship': ship,
             }
         return {
-            'companyID':    companyID,
-            'stats':        stats,
+            'companyID': companyID,
+            'stats': stats,
         }
+
 
 @receive.packet
 class ServerChat(ReceivingPacket):
@@ -316,16 +333,16 @@ class ServerChat(ReceivingPacket):
         action, destType, clientID = self.unpack(self.format, data)
         index = self.format.size
         message = self.unpack_str(data, index)
-        index += len(message)+1
+        index += len(message) + 1
         data = self.unpack(self.format_data, data, index)
-
         return {
-            'action':       action,
-            'destType':     destType,
-            'clientID':     clientID,
-            'message':      message,
-            'data':         data,
+            'action': action,
+            'destType': destType,
+            'clientID': clientID,
+            'message': message,
+            'data': data,
         }
+
 
 @receive.packet
 class ServerRcon(ReceivingPacket):
@@ -338,9 +355,10 @@ class ServerRcon(ReceivingPacket):
         result = self.unpack_str(data, index)
 
         return {
-            'colour':       colour,
-            'result':       result,
+            'colour': colour,
+            'result': result,
         }
+
 
 @receive.packet
 class ServerConsole(ReceivingPacket):
@@ -348,12 +366,13 @@ class ServerConsole(ReceivingPacket):
 
     def decode(self, data):
         origin = self.unpack_str(data, 0)
-        index = len(origin)+1
+        index = len(origin) + 1
         message = self.unpack_str(data, index)
         return {
-            'origin':       origin,
-            'message':      message,
+            'origin': origin,
+            'message': message,
         }
+
 
 @receive.packet
 class ServerCmdNames(ReceivingPacket):
@@ -363,18 +382,19 @@ class ServerCmdNames(ReceivingPacket):
 
     def decode(self, data):
         index = 1
-        cont = bool(self.unpack(self.format_bool, data[index-1]))
+        cont = bool(self.unpack(self.format_bool, data[index - 1:index]))
         commands = {}
         while cont:
             cmd_id = self.unpack(self.format_uint16, data, index)
             index += self.format_uint16.size
             cmd_name = self.unpack_str(data, index)
-            index += len(cmd_name) + 2 # +2 so we only have to increment once
-            cont = bool(self.unpack(self.format_bool, data[index-1]))
+            index += len(cmd_name) + 2  # +2 so we only have to increment once
+            cont = bool(self.unpack(self.format_bool, data[index - 1:index]))
             commands[cmd_id] = cmd_name
         return {
-            'commands':     commands,
-        }            
+            'commands': commands,
+        }
+
 
 @receive.packet
 class ServerCmdLogging(ReceivingPacket):
@@ -389,15 +409,16 @@ class ServerCmdLogging(ReceivingPacket):
         index += len(text) + 1
         frame = self.unpack(self.format_frame, data, index)
         return {
-            'clientID':     clientID,
-            'company':      company,
-            'commandID':    cmd_id,
-            'param1':       param1,
-            'param2':       param2,
-            'tile':         tile,
-            'text':         text,
-            'frame':        frame
+            'clientID': clientID,
+            'company': company,
+            'commandID': cmd_id,
+            'param1': param1,
+            'param2': param2,
+            'tile': tile,
+            'text': text,
+            'frame': frame
         }
+
 
 @receive.packet
 class ServerGamescript(ReceivingPacket):
@@ -407,11 +428,12 @@ class ServerGamescript(ReceivingPacket):
         json_string = self.unpack_str(data)
         try:
             json_data = json.loads(json_string)
-        except ValueError as error:
+        except ValueError:
             self.log.exception("Malformed json data received: %r.", json_string)
         return {
-            'data':         json_data,
+            'data': json_data,
         }
+
 
 @receive.packet
 class ServerRconEnd(ReceivingPacket):
@@ -420,8 +442,9 @@ class ServerRconEnd(ReceivingPacket):
     def decode(self, data):
         command = self.unpack_str(data)
         return {
-            'command':      command,
+            'command': command,
         }
+
 
 @receive.packet
 class ServerPong(ReceivingPacket):
@@ -431,5 +454,5 @@ class ServerPong(ReceivingPacket):
     def decode(self, data):
         payload = self.unpack(self.format, data)
         return {
-            'payload':      payload,
+            'payload': payload,
         }

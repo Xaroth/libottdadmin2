@@ -4,15 +4,21 @@
 #
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
+from __future__ import print_function
+
 import sys
 import os
 import warnings
+
+main_window = None
+
 try:
     import urwid
 except ImportError as ex:
-    print >> sys.stderr, "Failed to import urwid: %s" % ex
-    print >> sys.stderr, "Please check if you have the urwid library installed."
+    print("Failed to import urwid: %s" % ex, file=sys.stderr)
+    print("Please check if you have the urwid library installed.", file=sys.stderr)
     sys.exit(1)
+
 try:
     import libottdadmin2
 except ImportError as ex:
@@ -25,11 +31,12 @@ except ImportError as ex:
         try:
             import libottdadmin2
         except ImportError:
-            print >> sys.stderr, "Failed to import libottdadmin2: %s" % ex
+            print("Failed to import libottdadmin2: %s" % ex, file=sys.stderr)
             sys.exit(1)
     else:
-        print >> sys.stderr, "Failed to import libottdadmin2: %s" % ex
+        print("Failed to import libottdadmin2: %s" % ex, file=sys.stderr)
         sys.exit(1)
+
 
 def except_hook(extype, exobj, extb, manual=False):
     if not manual:
@@ -43,19 +50,16 @@ def except_hook(extype, exobj, extb, manual=False):
                 "traceback": "".join(traceback.format_tb(extb)),
                 "exception": extype.__name__+": "+str(exobj)
             }
-        print >> sys.stderr, message
+        print(message, file=sys.stderr)
 
-from collections import defaultdict
-from datetime import datetime, timedelta
+
 import errno
 from libottdadmin2.trackingclient import *
 from libottdadmin2.enums import *
 from libottdadmin2.constants import *
-import os
+from libottdadmin2.util import int_type
 import shlex
 import textwrap
-import threading
-import time
 import traceback
 
 from optparse import OptionParser
@@ -72,16 +76,19 @@ parser.add_option("-p", "--password", dest="password", default=None,
 parser.add_option("-i", "--interval", dest="timeout", default=0.1, type="float",
                   help="use X as polling interval (Advanced use only)", metavar="X")
 
+
 def swallow_args(func):
     def _inner(self, *args):
         return func(self)
     return _inner
+
 
 def command(*items):
     def __inner(func):
         func.commands = items
         return func
     return __inner
+
 
 class MaskableEdit (urwid.Edit):
     _hide_text = False
@@ -90,6 +97,7 @@ class MaskableEdit (urwid.Edit):
     @property
     def text_mask(self):
         return self._text_mask
+
     @text_mask.setter
     def text_mask(self, value):
         self._text_mask = value
@@ -98,6 +106,7 @@ class MaskableEdit (urwid.Edit):
     @property
     def hide_text(self):
         return self._hide_text
+
     @hide_text.setter
     def hide_text(self, value):
         if type(value) != bool:
@@ -110,6 +119,7 @@ class MaskableEdit (urwid.Edit):
         if self._hide_text:
             text[0] = len(text[0])*"*"
         return text
+
 
 class ScrollingListBox(urwid.ListBox):
     __metaclass__ = urwid.MetaSignals
@@ -151,52 +161,51 @@ class ScrollingListBox(urwid.ListBox):
 
         if key in ("page up", "page down"):
             self.set_focus_valign("bottom")
-            #logging.debug("focus = %d, len = %d" % (self.get_focus()[1], len(self.body)))
             if self.get_focus()[1] == len(self.body)-1:
                 self.auto_scroll = True
             else:
                 self.auto_scroll = False
-            #logging.debug("auto_scroll = %s" % (self.auto_scroll))
 
     def scroll_to_bottom(self):
-        #logging.debug("current_focus = %s, len(self.body) = %d" % (self.get_focus()[1], len(self.body)))
         if self.auto_scroll:
             # at bottom -> scroll down
             self.set_focus(len(self.body)-1)
             self.set_focus_valign("bottom")
 
+
 class ConnectionState(EnumHelper):
-    DISCONNECTED            = 0x00
-    CONNECTING              = 0x01
-    AUTHENTICATING          = 0x02
-    CONNECTED               = 0x03
-    DISCONNECTING           = 0x04
+    DISCONNECTED = 0x00
+    CONNECTING = 0x01
+    AUTHENTICATING = 0x02
+    CONNECTED = 0x03
+    DISCONNECTING = 0x04
+
 
 class OpenTTDAdmin(object):
-    _running                = True
-    _state                  = ConnectionState.DISCONNECTED
+    _running = True
+    _state = ConnectionState.DISCONNECTED
 
-    _connection             = None
-    _poll_interval          = 0.1
+    _connection = None
+    _poll_interval = 0.1
 
-    _output_list            = None
-    _body                   = None
-    _divider                = None
-    _current_markup         = None
-    _footer                 = None
-    _context                = None
+    _output_list = None
+    _body = None
+    _divider = None
+    _current_markup = None
+    _footer = None
+    _context = None
 
-    _history                = None
-    _hist_index             = -1
-    _hist_last              = None
+    _history = None
+    _hist_index = -1
+    _hist_last = None
 
-    command_handlers        = {}
-    debug                   = False
+    command_handlers = {}
+    debug = False
 
-    _ui                     = None
-    _main_loop              = None
+    _ui = None
+    _main_loop = None
 
-    _palette                = [
+    _palette = [
         ('divider', 'black', 'dark cyan', 'standout'),
         ('divider-hilight', 'dark magenta', 'dark cyan', 'standout'),
         ('text','light gray', 'default'),
@@ -208,13 +217,14 @@ class OpenTTDAdmin(object):
         ("header", "text"),
     ]
 
-    ERROR_MESSAGES          = {
+    ERROR_MESSAGES = {
         "NOT_CONNECTED":    "We are not connected",
     }
 
     @property
     def state(self):
         return self._state
+
     @state.setter
     def state(self, value):
         invalidate = self._state != value
@@ -242,7 +252,7 @@ class OpenTTDAdmin(object):
                 pass
             else:
                 raise
-        if self.connection.is_connected == False:
+        if not self.connection.is_connected:
             self.state = ConnectionState.DISCONNECTED
 
     @swallow_args
@@ -275,46 +285,46 @@ class OpenTTDAdmin(object):
         if company:
             company = company.name
         if action == Action.CHAT:
-            self.add_chat(origin = name, message = message)
+            self.add_chat(origin=name, message=message)
         elif action == Action.CHAT_COMPANY:
-            self.add_chat(origin = name, target = company or ' ', message = message)
+            self.add_chat(origin=name, target=company or ' ', message=message)
         elif action == Action.CHAT_CLIENT:
             if data in self.connection.clients:
                 target = self.connection.clients[data].name 
             else:
                 target = None
-            self.add_chat(origin = name, target = target or ' ', message = message)
+            self.add_chat(origin=name, target=target or ' ', message=message)
 
     def _clientjoin(self, client):
-        if isinstance(client, (long, int)):
+        if isinstance(client, int_type):
             return
-        self.add_chat(origin = client.name, is_action = True, message = "joined the game")
+        self.add_chat(origin=client.name, is_action=True, message="joined the game")
 
     def _clientupdate(self, old, client, changed):
         if 'play_as' in changed:
             company = self.connection.companies.get(client.play_as)
             self.add_debug("Client joined company ID: %d" % client.play_as)
             if company:
-                self.add_chat(origin = client.name, is_action = True, message = "joined company '%s'" % company.name)
+                self.add_chat(origin=client.name, is_action=True, message="joined company '%s'" % company.name)
             else:
-                self.add_chat(origin = client.name, is_action = True, message = "started a new company (#%d)" % client.play_as)
+                self.add_chat(origin=client.name, is_action=True, message="started a new company (#%d)" % client.play_as)
         if 'name' in changed:
-            self.add_chat(origin = old.name, is_action = True, message = "is now known as %s" % client.name)
+            self.add_chat(origin=old.name, is_action=True, message="is now known as %s" % client.name)
 
     def _clientquit(self, client, errorcode):
-        if isinstance(client, (long, int)):
+        if isinstance(client, int_type):
             return
-        self.add_chat(origin = client.name, is_action = True, message = "left the game")
+        self.add_chat(origin=client.name, is_action=True, message="left the game")
 
     def _init_widgets_(self):
-        self._output_list   = urwid.SimpleFocusListWalker([])
-        self._body          = urwid.AttrWrap(ScrollingListBox(self._output_list), "body")
-        self._divider       = urwid.AttrWrap(urwid.Text(""), "divider")
-        self._footer        = urwid.AttrWrap(MaskableEdit(">>> "), "footer")
+        self._output_list = urwid.SimpleFocusListWalker([])
+        self._body = urwid.AttrWrap(ScrollingListBox(self._output_list), "body")
+        self._divider = urwid.AttrWrap(urwid.Text(""), "divider")
+        self._footer = urwid.AttrWrap(MaskableEdit(">>> "), "footer")
 
         self._footer.set_wrap_mode("space")
 
-        self._context       = urwid.Frame(
+        self._context = urwid.Frame(
                                     urwid.Frame(
                                         self._body, 
                                         footer = self._divider
@@ -324,25 +334,25 @@ class OpenTTDAdmin(object):
         self._context.set_focus("footer")
 
     def _init_ui_(self):
-        self._ui            = urwid.raw_display.Screen()
+        self._ui = urwid.raw_display.Screen()
         self._ui.register_palette(self._palette)
 
     def _init_connection_(self):
         conn = self._connection = TrackingAdminClient()
 
-        conn.events.connected   += self._connected
-        conn.events.protocol    += self._protocol
+        conn.events.connected += self._connected
+        conn.events.protocol += self._protocol
         conn.events.datechanged += self.invalidate
-        conn.events.new_map     += self.invalidate
+        conn.events.new_map += self.invalidate
         conn.events.disconnected += self._disconnected
-        conn.events.pong        += self._pong
+        conn.events.pong += self._pong
 
-        conn.events.chat        += self._chat
-        conn.events.rcon        += self._rcondata
+        conn.events.chat += self._chat
+        conn.events.rcon += self._rcondata
 
-        conn.events.clientjoin  += self._clientjoin
+        conn.events.clientjoin += self._clientjoin
         conn.events.clientupdate += self._clientupdate
-        conn.events.clientquit  += self._clientquit
+        conn.events.clientquit += self._clientquit
 
     def _init_handlers_(self):
         self._history = []
@@ -355,7 +365,6 @@ class OpenTTDAdmin(object):
                 continue
             for command in func.commands:
                 self.command_handlers[command] = func
-
 
     def __init__(self, options, args):
         self.options = options
@@ -394,10 +403,10 @@ class OpenTTDAdmin(object):
             return
         self._connection = self._connection.copy()
         self._connection.configure(
-            host = self.options.host,
-            port = self.options.port,
-            password = self.options.password,
-            timeout = self.options.timeout or 0.1,
+            host=self.options.host,
+            port=self.options.port,
+            password=self.options.password,
+            timeout=self.options.timeout or 0.1,
             )
         self.add_notice("Connecting to '%s:%d'" % (self._connection.host, self._connection.port))
         self.state = ConnectionState.CONNECTING
@@ -470,8 +479,8 @@ class OpenTTDAdmin(object):
         def redraw(*args):
             self.draw()
             invalidate.locked = False
-
         invalidate_old = urwid.canvas.CanvasCache.invalidate
+
         def invalidate(cls, *args, **kwargs):
             invalidate_old(*args, **kwargs)
             if not invalidate.locked:
@@ -510,37 +519,37 @@ class OpenTTDAdmin(object):
         if self.debug:
             self.add_line(text)
 
-    def add_line(self, text, display_type = "text", display_time = None, align="left"):
-        return self.add_raw(urwid.AttrWrap(urwid.Text(text, align=align), display_type), display_time = display_time)
+    def add_line(self, text, display_type="text", display_time=None, align="left"):
+        return self.add_raw(urwid.AttrWrap(urwid.Text(text, align=align), display_type), display_time=display_time)
 
-    def add_error(self, text, display_time = None):
+    def add_error(self, text, display_time=None):
         if text in self.ERROR_MESSAGES:
             text = self.ERROR_MESSAGES[text]
-        return self.add_line(text, "error", display_time = display_time)
+        return self.add_line(text, "error", display_time=display_time)
 
-    def add_exception(self, exception, display_time = None):
-        return self.add_line(str(exception), "error", display_time = display_time or "error")
+    def add_exception(self, exception, display_time=None):
+        return self.add_line(str(exception), "error", display_time=display_time or "error")
 
-    def add_notice(self, text, display_time = None):
-        return self.add_line(text, "notice", display_time = display_time)
+    def add_notice(self, text, display_time=None):
+        return self.add_line(text, "notice", display_time=display_time)
 
-    def add_table(self, header, values, center_header = False):
+    def add_table(self, header, values, center_header=False):
         def get_max(x):
             return max([len(str(item[x])) or 1 for item in values] + [len(x),])
         columns = dict([(item, get_max(item)) for item in header])
         total_width = float(sum(columns.values()))
-        columns = dict([(item, int((val / total_width) * 100) ) for item, val in columns.items()])
+        columns = dict([(item, int((val / total_width) * 100)) for item, val in columns.items()])
 
-        lines = []
-        lines.append([('weight', columns[item], urwid.Text(item, align='center' if center_header else 'left')) for item in header])
+        lines = [[('weight', columns[item], urwid.Text(item, align='center' if center_header else 'left')) for item in
+                  header]]
 
         lines.extend([
             [('weight', columns[item], urwid.Text(str(line[item]) or " ")) for item in header]
             for line in values])
         for line in lines:
-            self.add_raw(urwid.Columns(line, dividechars = 1))
+            self.add_raw(urwid.Columns(line, dividechars=1))
 
-    def add_chat(self, origin, message, target = None, origin_type = "text", target_type = "notice", is_action = False):
+    def add_chat(self, origin, message, target=None, origin_type="text", target_type="notice", is_action=False):
         markup = []
         if is_action:
             markup.append("* ")
@@ -557,16 +566,16 @@ class OpenTTDAdmin(object):
             markup.append(" *")
         return self.add_raw(urwid.Text(markup))
 
-    def add_raw(self, item, display_time = None):
+    def add_raw(self, item, display_time=None):
         line = urwid.Columns([
                 ('pack', urwid.AttrWrap(
                                 urwid.Text("%8s ]" % datetime.now().strftime("%H:%M:%S")), 
                                 display_time or "text")),
                 ('weight', 100, item)
-            ], dividechars = 1)
+            ], dividechars=1)
         self._output_list.append(line)
 
-    def history_scroll(self, direction = 1):
+    def history_scroll(self, direction=1):
         self.add_debug("history_scroll: %d" % direction)
         if len(self._history) < 1:
             return
@@ -626,10 +635,10 @@ class OpenTTDAdmin(object):
 
     def do_cmd(self, line):
         if len(line) < 1:
-            return -1 # Don't record this command in the history list
+            return -1  # Don't record this command in the history list
         parts = line.split(' ', 1)
         if len(parts) < 1:
-            return -1 # Don't record this command in the history list
+            return -1  # Don't record this command in the history list
         command = parts[0]
         args_orig = ''
         if len(parts) > 1:
@@ -922,12 +931,14 @@ class OpenTTDAdmin(object):
         self.connection.send_packet(AdminRcon, command = args_orig)
         self.add_chat(origin = "RCON", message = args_orig)
 
-def main(klass = OpenTTDAdmin):
+
+def main(klass=OpenTTDAdmin):
     options, args = parser.parse_args()
     sys.excepthook = except_hook
 
     main_window = klass(options, args)
     main_window.main()
+
 
 if __name__ == "__main__":
     main()

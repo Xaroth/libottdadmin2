@@ -7,7 +7,7 @@ except ImportError:
 
 setup(
     name='libottdadmin2',
-    version='0.0.1',
+    version='0.0.2a1',
     author="Steven 'Xaroth' Noorbergen",
     author_email='xaroth@opendune.org',
     packages=['libottdadmin2', 'libottdadmin2.packets'],
@@ -23,8 +23,11 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Games/Entertainment',
         'Topic :: Software Development :: Libraries',
         'Topic :: Software Development :: Libraries :: Python Modules',

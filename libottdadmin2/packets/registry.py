@@ -4,19 +4,22 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-from ..util import LoggableObject
+from libottdadmin2.util import LoggableObject, integer_types, itervalues
+
 
 class InvalidPacketItem(Exception):
     pass
 
+
 class PacketNotFound(Exception):
     pass
+
 
 class PacketRegistry(LoggableObject):
     def __init__(self):
         self._packets = {}
 
-    def packet(self, packetID, klass = None):
+    def packet(self, packetID, klass=None):
         if packetID is None and klass is None:
             # @register.packet()
             return self.packet_func
@@ -31,24 +34,24 @@ class PacketRegistry(LoggableObject):
                 return dec
         elif packetID is not None and klass is not None:
             # register.packet(packetID, klass)
-            self.log.debug("Registering packetID '%d' to class '%s.%s'", 
-                            packetID, klass.__module__, klass.__name__)
+            self.log.debug("Registering packetID '%d' to class '%s.%s'",
+                           packetID, klass.__module__, klass.__name__)
             self._packets[packetID] = klass()
             return klass
         else:
             raise InvalidPacketItem("Unsupported argument to .packet(packetID, klass)")
 
     def __iter__(self):
-        return self._packets.itervalues()
+        return itervalues(self._packets)
 
     def get_by_name(self, name):
-        for item in self._packets.values(): 
+        for item in self._packets.values():
             if item.__class__.__name__ == name:
                 return item
         return None
 
     def __getitem__(self, id):
-        if not isinstance(id, (int, long)):
+        if not isinstance(id, integer_types):
             if hasattr(id, 'packetID'):
                 id = id.packetID
         packet = self._packets.get(id, None)
@@ -59,10 +62,15 @@ class PacketRegistry(LoggableObject):
     def packet_func(self, klass):
         packetID = getattr(klass, 'packetID', None)
         if packetID is None:
-            raise InvalidPacketItem("Packet class '%s.%s' has no packetID" %
-                            (klass.__module__, klass.__name__))
+            raise InvalidPacketItem("Packet class '%s.%s' has no packetID" % (
+                klass.__module__, klass.__name__
+            ))
         self.packet(packetID, klass)
         return klass
 
-receive     = PacketRegistry()
-send        = PacketRegistry() # Not really super useful to register a pool of sending packets, but at least we have a easy-to-access list this way.
+
+receive = PacketRegistry()
+
+# Not really super useful to register a pool of sending packets,
+# but at least we have a easy-to-access list this way.
+send = PacketRegistry()
