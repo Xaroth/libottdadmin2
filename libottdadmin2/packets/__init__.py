@@ -4,10 +4,9 @@
 # License: http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
-from libottdadmin2.packets.admin import AdminJoin, AdminQuit, AdminUpdateFrequency, AdminPoll, \
-    AdminChat, AdminRcon, AdminGamescript, AdminPing
-from libottdadmin2.packets.base import Struct, SendingPacket, ReceivingPacket, ValidationError
-from libottdadmin2.packets.registry import receive, send, PacketNotFound
+from libottdadmin2.packets.base import Packet
+from libottdadmin2.packets.admin import AdminChat, AdminGamescript, AdminJoin, AdminPing, \
+    AdminPoll, AdminQuit, AdminRcon, AdminUpdateFrequency
 from libottdadmin2.packets.server import ServerFull, ServerBanned, ServerError, ServerProtocol, \
     ServerWelcome, ServerNewGame, ServerShutdown, ServerDate, \
     ServerClientJoin, ServerClientInfo, ServerClientUpdate, \
@@ -19,14 +18,7 @@ from libottdadmin2.packets.server import ServerFull, ServerBanned, ServerError, 
     ServerGamescript, ServerRconEnd, ServerPong
 
 __all__ = [
-    "receive",
-    "send",
-    "PacketNotFound",
-
-    "Struct",
-    "SendingPacket",
-    "ReceivingPacket",
-    "ValidationError",
+    "Packet",
 
     "ServerBanned",
     "ServerChat",
