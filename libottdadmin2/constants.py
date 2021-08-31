@@ -11,7 +11,10 @@
 NETWORK_DEFAULT_PORT = 3979  # The default port of the game server (TCP & UDP)
 NETWORK_ADMIN_PORT = 3977  # The default port for admin network
 
-SEND_MTU = 1460  # Number of bytes we can pack in a single packet
+TCP_MTU = 32767  # Number of bytes we can pack in a single TCP packet
+COMPAT_MTU = (
+    1460  # Number of bytes we can pack in a single packet for backward compatibility
+)
 
 NETWORK_GAME_ADMIN_VERSION = 1  # What version of the admin network do we use?
 NETWORK_GAME_INFO_VERSION = 4  # What version of game-info do we use?
@@ -47,8 +50,8 @@ NETWORK_RCONCOMMAND_LENGTH = (
     500  # The maximum length of a rconsole command, in bytes including '\0'
 )
 NETWORK_GAMESCRIPT_JSON_LENGTH = (
-    1450  # The maximum length of a gamescript json string, in bytes including '\0'
-)
+    COMPAT_MTU - 3
+)  # The maximum length of a gamescript json string, in bytes including '\0'
 NETWORK_CHAT_LENGTH = (
     900  # The maximum length of a chat message, in bytes including '\0'
 )

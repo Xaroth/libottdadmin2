@@ -529,7 +529,7 @@ class ServerConsole(Packet):
 
     def encode(self, origin: str, message: str):
         # The maximum length for origin and message is not known. For sanity we stick to
-        #  NETWORK_GAMESCRIPT_JSON_LENGTH as that is closest to SEND_MTU
+        #  NETWORK_GAMESCRIPT_JSON_LENGTH as that is closest to COMPAT_MTU
         self.write_str(
             check_length(origin, NETWORK_GAMESCRIPT_JSON_LENGTH, "'origin'"),
             check_length(message, NETWORK_GAMESCRIPT_JSON_LENGTH, "'message'"),
@@ -537,7 +537,7 @@ class ServerConsole(Packet):
 
     def decode(self) -> Tuple[str, str]:
         # The maximum length for origin and message is not known. For sanity we stick to
-        #  NETWORK_GAMESCRIPT_JSON_LENGTH as that is closest to SEND_MTU
+        #  NETWORK_GAMESCRIPT_JSON_LENGTH as that is closest to COMPAT_MTU
         origin, message = self.read_str(2)
         return self.data(
             check_length(origin, NETWORK_GAMESCRIPT_JSON_LENGTH, "'origin'"),

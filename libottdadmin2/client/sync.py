@@ -10,7 +10,7 @@ import socket
 from typing import Union, Optional
 
 from libottdadmin2.client.common import OttdClientMixIn
-from libottdadmin2.constants import SEND_MTU
+from libottdadmin2.constants import TCP_MTU
 from libottdadmin2.packets import Packet
 from libottdadmin2.util import loggable
 
@@ -70,7 +70,7 @@ class OttdSocket(OttdClientMixIn, socket.socket):
     def register_to_selector(self, selector: _BaseSelectorImpl):
         # noinspection PyUnusedLocal
         def _read(conn: OttdSocket, mask):
-            data = conn.recv(SEND_MTU)
+            data = conn.recv(TCP_MTU)
             if data:
                 conn.data_received(data)
             else:
