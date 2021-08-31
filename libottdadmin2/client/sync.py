@@ -17,12 +17,17 @@ from libottdadmin2.util import loggable
 
 @loggable
 class OttdSocket(OttdClientMixIn, socket.socket):
-    def __init__(self, password: Optional[str] = None, user_agent: Optional[str] = None, version: Optional[str] = None):
+    def __init__(
+        self,
+        password: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        version: Optional[str] = None,
+    ):
         super().__init__(socket.AF_INET, socket.SOCK_STREAM)
         self.peername = None
         self._connected = False
         self._last_error = None
-        self._buffer = b''
+        self._buffer = b""
         self._selector = None  # Type: Optional[_BaseSelectorImpl]
         self.configure(password=password, user_agent=user_agent, version=version)
 
@@ -76,6 +81,6 @@ class OttdSocket(OttdClientMixIn, socket.socket):
 
 
 __all__ = [
-    'DefaultSelector',
-    'OttdSocket',
+    "DefaultSelector",
+    "OttdSocket",
 ]

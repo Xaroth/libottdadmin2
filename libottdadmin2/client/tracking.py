@@ -6,7 +6,13 @@
 
 from datetime import datetime
 
-from libottdadmin2.enums import UpdateType, UpdateFrequency, PollExtra, ErrorCode, CompanyRemoveReason
+from libottdadmin2.enums import (
+    UpdateType,
+    UpdateFrequency,
+    PollExtra,
+    ErrorCode,
+    CompanyRemoveReason,
+)
 from libottdadmin2.packets import AdminPoll, Packet
 from libottdadmin2.packets import AdminUpdateFrequency
 from libottdadmin2.packets import ServerCompanyInfo
@@ -46,9 +52,17 @@ class TrackingMixIn:
         self.clients = {}
         self.commands = {}
         self.companies = {
-            255: ServerCompanyInfo.data(company_id=255, name='Spectators', manager='Spec Tator', colour=0,
-                                        passworded=False, startyear=startyear,
-                                        is_ai=False, bankruptcy_counter=0, shareholders=[255, 255, 255, 255])
+            255: ServerCompanyInfo.data(
+                company_id=255,
+                name="Spectators",
+                manager="Spec Tator",
+                colour=0,
+                passworded=False,
+                startyear=startyear,
+                is_ai=False,
+                bankruptcy_counter=0,
+                shareholders=[255, 255, 255, 255],
+            )
         }
         self.economy = {}
         self.company_stats = {}
@@ -62,7 +76,11 @@ class TrackingMixIn:
             self.log.debug("Processing update type: %s (%s)", _type.name, freq)
             if freq ^ UpdateFrequency.POLL:
                 self.log.debug("Requesting updates")
-                self.send_packet(AdminUpdateFrequency.create(type=_type, freq=freq & ~UpdateFrequency.POLL))
+                self.send_packet(
+                    AdminUpdateFrequency.create(
+                        type=_type, freq=freq & ~UpdateFrequency.POLL
+                    )
+                )
             if freq & UpdateFrequency.POLL:
                 self.log.debug("Polling current values")
                 self.send_packet(AdminPoll.create(type=_type, extra=PollExtra.ALL))
@@ -77,13 +95,21 @@ class TrackingMixIn:
         if date.day == 2:
             self.log.debug("Company details")
             for company_id, economy in self.economy.items():
-                if company_id not in self.companies or company_id not in self.company_stats:
+                if (
+                    company_id not in self.companies
+                    or company_id not in self.company_stats
+                ):
                     continue
                 info = self.companies[company_id]
                 stats = self.company_stats[company_id]
                 self.log.debug("%d: %s (%s)", company_id, info.name, info.manager)
                 self.log.debug("%d: %r", company_id, economy)
-                self.log.debug("%d: Vehicles: %r, Stations: %r", company_id, stats.vehicles, stats.stations)
+                self.log.debug(
+                    "%d: Vehicles: %r, Stations: %r",
+                    company_id,
+                    stats.vehicles,
+                    stats.stations,
+                )
 
     # noinspection PyUnusedLocal
     def on_server_client_info_raw(self, packet: Packet, data) -> None:
@@ -93,7 +119,9 @@ class TrackingMixIn:
     def on_server_client_update_raw(self, packet: Packet, data) -> None:
         if data.client_id in self.clients:
             # noinspection PyProtectedMember
-            self.clients[data.client_id] = self.clients[data.client_id]._replace(**data._asdict())
+            self.clients[data.client_id] = self.clients[data.client_id]._replace(
+                **data._asdict()
+            )
 
     def on_server_client_quit(self, client_id: int) -> None:
         if client_id in self.clients:
@@ -117,7 +145,9 @@ class TrackingMixIn:
     def on_server_company_update_raw(self, packet: Packet, data) -> None:
         if data.company_id in self.companies:
             # noinspection PyProtectedMember
-            self.companies[data.company_id] = self.companies[data.company_id]._replace(**data._asdict())
+            self.companies[data.company_id] = self.companies[data.company_id]._replace(
+                **data._asdict()
+            )
 
     # noinspection PyUnusedLocal
     def on_server_company_remove(self, company_id, reason: CompanyRemoveReason) -> None:

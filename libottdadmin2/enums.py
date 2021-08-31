@@ -89,7 +89,9 @@ class NonChatAction(IntEnum):
 
 
 # noinspection PyTypeChecker
-Action = IntEnum('Action', [(i.name, i.value) for i in sorted(chain(ChatAction, NonChatAction))])
+Action = IntEnum(
+    "Action", [(i.name, i.value) for i in sorted(chain(ChatAction, NonChatAction))]
+)
 
 
 class ErrorCode(IntEnum):

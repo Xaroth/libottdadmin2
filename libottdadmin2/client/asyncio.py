@@ -16,10 +16,16 @@ from libottdadmin2.util import loggable
 @loggable
 class OttdAdminProtocol(OttdClientMixIn, asyncio.Protocol):
     # noinspection PyUnusedLocal
-    def __init__(self, loop, password: Optional[str] = None, user_agent: Optional[str] = None,
-                 version: Optional[str] = None, **kwargs):
+    def __init__(
+        self,
+        loop,
+        password: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        version: Optional[str] = None,
+        **kwargs
+    ):
         self.loop = loop
-        self._buffer = b''
+        self._buffer = b""
         self.client_active = asyncio.Future()
         self.transport = None
         self.peername = None
@@ -44,17 +50,26 @@ class OttdAdminProtocol(OttdClientMixIn, asyncio.Protocol):
         self.transport.write(packet.write_to_buffer())
 
     @classmethod
-    async def connect(cls, *, loop: asyncio.AbstractEventLoop = None, host: str = None, port: int = None, **kwargs):
+    async def connect(
+        cls,
+        *,
+        loop: asyncio.AbstractEventLoop = None,
+        host: str = None,
+        port: int = None,
+        **kwargs
+    ):
         if loop is None:
             loop = asyncio.get_event_loop()
         if host is None:
-            host = '127.0.0.1'
+            host = "127.0.0.1"
         if port is None:
             port = NETWORK_ADMIN_PORT
-        transport, protocol = await loop.create_connection(lambda: cls(loop, **kwargs), host, port)
+        transport, protocol = await loop.create_connection(
+            lambda: cls(loop, **kwargs), host, port
+        )
         return protocol
 
 
 __all__ = [
-    'OttdAdminProtocol',
+    "OttdAdminProtocol",
 ]

@@ -11,8 +11,8 @@ from libottdadmin2.client.common import OttdClientMixIn
 from libottdadmin2.client.tracking import TrackingMixIn
 
 __all__ = [
-    'OttdAdminProtocol',
-    'OttdSocket',
-    'OttdClientMixIn',
-    'TrackingMixIn',
+    "OttdAdminProtocol",
+    "OttdSocket",
+    "OttdClientMixIn",
+    "TrackingMixIn",
 ]

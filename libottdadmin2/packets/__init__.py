@@ -5,21 +5,48 @@
 #
 
 from libottdadmin2.packets.base import Packet
-from libottdadmin2.packets.admin import AdminChat, AdminGamescript, AdminJoin, AdminPing, \
-    AdminPoll, AdminQuit, AdminRcon, AdminUpdateFrequency
-from libottdadmin2.packets.server import ServerFull, ServerBanned, ServerError, ServerProtocol, \
-    ServerWelcome, ServerNewGame, ServerShutdown, ServerDate, \
-    ServerClientJoin, ServerClientInfo, ServerClientUpdate, \
-    ServerClientQuit, ServerClientError, ServerCompanyNew, \
-    ServerCompanyInfo, ServerCompanyUpdate, \
-    ServerCompanyRemove, ServerCompanyEconomy, \
-    ServerCompanyStats, ServerChat, ServerRcon, \
-    ServerConsole, ServerCmdNames, ServerCmdLogging, \
-    ServerGamescript, ServerRconEnd, ServerPong
+from libottdadmin2.packets.admin import (
+    AdminChat,
+    AdminGamescript,
+    AdminJoin,
+    AdminPing,
+    AdminPoll,
+    AdminQuit,
+    AdminRcon,
+    AdminUpdateFrequency,
+)
+from libottdadmin2.packets.server import (
+    ServerFull,
+    ServerBanned,
+    ServerError,
+    ServerProtocol,
+    ServerWelcome,
+    ServerNewGame,
+    ServerShutdown,
+    ServerDate,
+    ServerClientJoin,
+    ServerClientInfo,
+    ServerClientUpdate,
+    ServerClientQuit,
+    ServerClientError,
+    ServerCompanyNew,
+    ServerCompanyInfo,
+    ServerCompanyUpdate,
+    ServerCompanyRemove,
+    ServerCompanyEconomy,
+    ServerCompanyStats,
+    ServerChat,
+    ServerRcon,
+    ServerConsole,
+    ServerCmdNames,
+    ServerCmdLogging,
+    ServerGamescript,
+    ServerRconEnd,
+    ServerPong,
+)
 
 __all__ = [
     "Packet",
-
     "ServerBanned",
     "ServerChat",
     "ServerClientError",
@@ -47,7 +74,6 @@ __all__ = [
     "ServerRconEnd",
     "ServerShutdown",
     "ServerWelcome",
-
     "AdminChat",
     "AdminGamescript",
     "AdminJoin",

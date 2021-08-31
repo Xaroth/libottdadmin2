@@ -14,7 +14,9 @@ GAMEDATE_BASE_OFFSET = 366
 
 
 def gamedate_to_datetime(date):
-    if date < GAMEDATE_BASE_OFFSET:  # We really only get 0 occasionally, but cover all the cases.
+    if (
+        date < GAMEDATE_BASE_OFFSET
+    ):  # We really only get 0 occasionally, but cover all the cases.
         return datetime.min
     return GAMEDATE_BASE_DATE + timedelta(days=date - GAMEDATE_BASE_OFFSET)
 
@@ -43,16 +45,16 @@ class SimpleDataclass:
         return "<%s(**%r)>" % (self.__class__.__name__, self.__dict__)
 
 
-first_cap_re = re.compile('(.)([A-Z][a-z]+)')
-all_cap_re = re.compile('([a-z0-9])([A-Z])')
+first_cap_re = re.compile("(.)([A-Z][a-z]+)")
+all_cap_re = re.compile("([a-z0-9])([A-Z])")
 
 
 def camel_to_snake(name):
-    s1 = first_cap_re.sub(r'\1_\2', name)
-    return all_cap_re.sub(r'\1_\2', s1).lower()
+    s1 = first_cap_re.sub(r"\1_\2", name)
+    return all_cap_re.sub(r"\1_\2", s1).lower()
 
 
-def ensure_binary(s, encoding='utf-8', errors='strict'):
+def ensure_binary(s, encoding="utf-8", errors="strict"):
     if isinstance(s, str):
         return s.encode(encoding, errors)
     elif isinstance(s, bytes):
@@ -61,7 +63,7 @@ def ensure_binary(s, encoding='utf-8', errors='strict'):
         raise TypeError("not expecting type '%s'" % type(s))
 
 
-def ensure_text(s, encoding='utf-8', errors='strict'):
+def ensure_text(s, encoding="utf-8", errors="strict"):
     if isinstance(s, bytes):
         return s.decode(encoding, errors)
     elif isinstance(s, str):

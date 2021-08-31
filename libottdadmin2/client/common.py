@@ -20,9 +20,14 @@ class OttdClientMixIn:
     transport = None  # Type: Optional[transports.Transport]
     peername = None  # Type: Tuple[str, int]
 
-    def configure(self, password: Optional[str] = None, user_agent: Optional[str] = None,
-                  version: Optional[str] = None):
+    def configure(
+        self,
+        password: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        version: Optional[str] = None,
+    ):
         from libottdadmin2 import VERSION
+
         self._password = password
         self._user_agent = user_agent or "libottdadmin2"
         self._version = version or VERSION
@@ -35,8 +40,16 @@ class OttdClientMixIn:
         self.log.info("Connection made to %s:%d", self.peername[0], self.peername[1])
 
         if self._password:
-            self.log.info("Automatically authenticating: %s@%s", self._user_agent, self._version)
-            self.send_packet(AdminJoin.create(password=self._password, name=self._user_agent, version=self._version))
+            self.log.info(
+                "Automatically authenticating: %s@%s", self._user_agent, self._version
+            )
+            self.send_packet(
+                AdminJoin.create(
+                    password=self._password,
+                    name=self._user_agent,
+                    version=self._version,
+                )
+            )
 
     def data_received(self, data: bytes) -> None:
         self._buffer += data
@@ -77,5 +90,5 @@ class OttdClientMixIn:
 
 
 __all__ = [
-    'OttdClientMixIn',
+    "OttdClientMixIn",
 ]
