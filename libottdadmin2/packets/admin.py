@@ -17,6 +17,7 @@ from libottdadmin2.constants import (
 )
 from libottdadmin2.packets.base import Packet, check_length
 from libottdadmin2.enums import (
+    Colour,
     UpdateType,
     UpdateFrequency,
     ChatAction,
@@ -146,3 +147,20 @@ class AdminPing(Packet):
     def decode(self) -> Tuple[int]:
         (payload,) = self.read_uint()
         return self.data(payload)
+
+
+@Packet.register
+class AdminExternalChat(Packet):
+    packet_id = 8
+    fields = ["source", "colour", "user", "message"]
+
+    def encode(self, source: str, colour: Colour, user: str, message: str):
+        self.write_str(source)
+        self.write_uint(Colour(colour))
+        self.write_str(user, message)
+
+    def decode(self):
+        (source,) = self.read_str()
+        (colour,) = self.read_uint()
+        user, message = self.read_str(2)
+        return self.data(source, Colour(colour), user, message)
