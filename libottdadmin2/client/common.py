@@ -7,14 +7,17 @@
 from asyncio import transports
 from typing import Tuple, Any, Optional
 
-from libottdadmin2.packets import AdminJoin, Packet, AdminQuit
+from libottdadmin2.packets import AdminJoin, Packet, AdminQuit, AdminKeyAuth
 from libottdadmin2.util import loggable, camel_to_snake
+
+from ed25519 import SigningKey, from_ascii
 
 
 @loggable
 class OttdClientMixIn:
     _buffer = None  # Type: bytes
     _password = None  # Type: Optional[str]
+    _private_key = None # Type: Optional[str]
     _user_agent = None  # Type: Optional[str]
     _version = None  # Type: Optional[str]
     transport = None  # Type: Optional[transports.Transport]
@@ -23,12 +26,14 @@ class OttdClientMixIn:
     def configure(
         self,
         password: Optional[str] = None,
+        private_key: Optional[str] = None,
         user_agent: Optional[str] = None,
         version: Optional[str] = None,
     ):
         from libottdadmin2 import VERSION
 
         self._password = password
+        self._private_key = private_key
         self._user_agent = user_agent or "libottdadmin2"
         self._version = version or VERSION
 
@@ -87,6 +92,11 @@ class OttdClientMixIn:
     def on_server_shutdown(self):
         self.log.debug("Server is shutting down")
         self.connection_closed()
+
+    def on_server_need_key_auth(self, challenge: bytearray):
+        key = SigningKey(from_ascii(self._private_key, encoding='hex'))
+        signature = key.sign(bytes(challenge))
+        self.send_packet(AdminKeyAuth.create(signature=signature))
 
 
 __all__ = [

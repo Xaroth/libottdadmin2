@@ -14,6 +14,7 @@ from libottdadmin2.packets.admin import (
     AdminQuit,
     AdminRcon,
     AdminUpdateFrequency,
+    AdminKeyAuth,
 )
 from libottdadmin2.packets.server import (
     ServerFull,
@@ -43,6 +44,7 @@ from libottdadmin2.packets.server import (
     ServerGamescript,
     ServerRconEnd,
     ServerPong,
+    ServerNeedKeyAuth,
 )
 
 __all__ = [

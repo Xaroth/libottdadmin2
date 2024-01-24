@@ -630,3 +630,17 @@ class ServerRconEnd(AdminRcon):
 @Packet.register
 class ServerPong(AdminPing):
     packet_id = 126
+
+
+@Packet.register
+class ServerNeedKeyAuth(Packet):
+    packet_id = 128
+    fields = ["challenge"]
+
+    def encode(self, challenge: bytearray):
+        for b in signature:
+            self.write_byte(b)
+
+    def decode(self) -> bytearray:
+        challenge = self.read_byte(64)
+        return self.data(challenge)

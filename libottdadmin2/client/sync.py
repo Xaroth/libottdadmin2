@@ -20,6 +20,7 @@ class OttdSocket(OttdClientMixIn, socket.socket):
     def __init__(
         self,
         password: Optional[str] = None,
+        private_key: Optional[str] = None,
         user_agent: Optional[str] = None,
         version: Optional[str] = None,
     ):
@@ -29,7 +30,7 @@ class OttdSocket(OttdClientMixIn, socket.socket):
         self._last_error = None
         self._buffer = b""
         self._selector = None  # Type: Optional[_BaseSelectorImpl]
-        self.configure(password=password, user_agent=user_agent, version=version)
+        self.configure(password=password, private_key=private_key, user_agent=user_agent, version=version)
 
     def connect(self, address: Union[tuple, str, bytes]) -> bool:
         try:

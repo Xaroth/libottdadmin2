@@ -10,7 +10,7 @@ from typing import Tuple, Union
 from libottdadmin2.constants import (
     NETWORK_CLIENT_NAME_LENGTH,
     NETWORK_REVISION_LENGTH,
-    NETWORK_PASSWORD_LENGTH,
+    NETWORK_PUBLIC_KEY_LENGTH,
     NETWORK_CHAT_LENGTH,
     NETWORK_RCONCOMMAND_LENGTH,
     NETWORK_GAMESCRIPT_JSON_LENGTH,
@@ -33,7 +33,7 @@ class AdminJoin(Packet):
 
     def encode(self, password: str, name: str, version: str):
         self.write_str(
-            check_length(password, NETWORK_PASSWORD_LENGTH, "'password'"),
+            check_length(password, NETWORK_PUBLIC_KEY_LENGTH, "'password'"),
             check_length(name, NETWORK_CLIENT_NAME_LENGTH, "'name'"),
             check_length(version, NETWORK_REVISION_LENGTH, "'version'"),
         )
@@ -41,7 +41,7 @@ class AdminJoin(Packet):
     def decode(self) -> Tuple[str, str, str]:
         password, name, version = self.read_str(3)
         return self.data(
-            check_length(password, NETWORK_PASSWORD_LENGTH, "'password'"),
+            check_length(password, NETWORK_PUBLIC_KEY_LENGTH, "'password'"),
             check_length(name, NETWORK_CLIENT_NAME_LENGTH, "'name'"),
             check_length(version, NETWORK_REVISION_LENGTH, "'version'"),
         )
@@ -164,3 +164,18 @@ class AdminExternalChat(Packet):
         (colour,) = self.read_uint()
         user, message = self.read_str(2)
         return self.data(source, Colour(colour), user, message)
+
+
+
+@Packet.register
+class AdminKeyAuth(Packet):
+    packet_id = 9
+    fields = ["signature"]
+
+    def encode(self, signature: bytearray):
+        for b in signature:
+            self.write_byte(b)
+
+    def decode(self) -> bytearray:
+        signature = self.read_byte(64)
+        return self.data(signature)

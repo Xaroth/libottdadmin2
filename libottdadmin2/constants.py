@@ -42,6 +42,9 @@ NETWORK_REVISION_LENGTH = (
 NETWORK_PASSWORD_LENGTH = (
     33  # The maximum length of the password, in bytes including '\0'
 )
+NETWORK_PUBLIC_KEY_LENGTH = (
+    75  # The maximum length of the public key, in bytes including '\0'
+)
 NETWORK_CLIENTS_LENGTH = 200  # The maximum length for the list of clients that controls a company, including '\0'
 NETWORK_CLIENT_NAME_LENGTH = (
     25  # The maximum length of a client's name, in bytes including '\0'
