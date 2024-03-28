@@ -312,7 +312,11 @@ class ServerCompanyInfo(Packet):
         shareholders = None
         if self.has_available_data:
             (bankruptcy_counter,) = self.read_byte()
+        # OpenTTD 14.0 removed shareholders
+        if self.has_available_data:
             shareholders = list(self.read_byte(4))
+        else:
+            shareholders = list([255, 255, 255, 255])
         return self.data(
             company_id,
             check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
@@ -367,7 +371,11 @@ class ServerCompanyUpdate(Packet):
         (colour,) = self.read_byte()
         (passworded,) = self.read_bool()
         (bankruptcy_counter,) = self.read_byte()
-        shareholders = list(self.read_byte(4))
+        # OpenTTD 14.0 removed shareholders
+        if self.has_available_data:
+            shareholders = list(self.read_byte(4))
+        else:
+            shareholders = list([255, 255, 255, 255])
         return self.data(
             company_id,
             check_length(name, NETWORK_COMPANY_NAME_LENGTH, "'name'"),
