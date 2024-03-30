@@ -7,6 +7,7 @@
 from functools import lru_cache, wraps
 from itertools import chain
 
+from libottdadmin2.client.crypto import MAC_SIZE
 from libottdadmin2.exceptions import (
     InvalidHeaderError,
     UnknownPacketError,
@@ -35,6 +36,8 @@ def _new_struct(fmt):
 
 
 HEADER = new_struct("HB")
+HEADER_SIZE_PART = new_struct("H")
+HEADER_TYPE_PART = new_struct("B")
 
 
 # Easy mapping for stream data.
@@ -178,8 +181,17 @@ class Packet:
         obj.encode(**kwargs)
         return obj
 
-    def write_to_buffer(self):
-        return b"".join([self.header, self.buffer])
+    def write_to_buffer(self, encryption_handler = None):
+        if encryption_handler is None:
+            # Unencrypted packets are simply the header and the data.
+            return b"".join([self.header, self.buffer])
+
+        # With encrypted packets, only the packet length is stored unencrypted. All other data is
+        # encrypted and validated against a message authentication code. As such, the consituents
+        # of the header must be handled separately.
+        data = b"".join([HEADER_TYPE_PART.pack(self.packet_id), self.buffer])
+        mac, cipher = encryption_handler.lock(data)
+        return b"".join([HEADER_SIZE_PART.pack(HEADER_SIZE_PART.size + len(mac) + len(cipher)), mac, cipher])
 
     @staticmethod
     def from_buffer(buffer=None, hdr=None, validate=True):
@@ -205,17 +217,40 @@ class Packet:
         return obj
 
     @staticmethod
-    def extract(buffer) -> Tuple[bool, int, Any]:
+    def extract(buffer, decryption_handler = None) -> Tuple[bool, int, Any]:
         if len(buffer) < HEADER.size:
             return False, 0, None
-        hdr = buffer[0 : HEADER.size]
-        length, pid = HEADER.unpack(hdr)
+
+        # When the packet is encrypted, the size is not encrypted but the remaining data is either
+        # encrypted or the message authentication code. So first get the length seperately.
+        length, = HEADER_SIZE_PART.unpack(buffer[0 : HEADER_SIZE_PART.size])
         if len(buffer) < length:
             return False, 0, None
+
+        hdr = None
+        if decryption_handler is None:
+            hdr = buffer[0 : HEADER.size]
+            buffer = buffer[HEADER.size : length]
+        else:
+            # Perform the decryption and (automatic) validation against the message authentication code.
+            split_offset = HEADER_SIZE_PART.size + MAC_SIZE
+            data = decryption_handler.unlock(
+                mac = buffer[HEADER_SIZE_PART.size : split_offset],
+                message = buffer[split_offset : length]
+            )
+            if data is None:
+                raise InvalidHeaderError("Signature validation failed")
+
+            # Reconstruct the header and (remaining) buffer in the way the rest of the code expects it.
+            hdr = b''.join([buffer[0 : HEADER_SIZE_PART.size], data[0 : HEADER_TYPE_PART.size]])
+            buffer = bytes(data[HEADER_TYPE_PART.size : len(data)])
+
+        length, pid = HEADER.unpack(hdr)
+
         if pid not in Packet._registry:
             return False, length, None
         klass = Packet._registry[pid]
-        obj = klass(buffer[HEADER.size : length], hdr)
+        obj = klass(buffer, hdr)
         return True, length, obj
 
     @staticmethod
