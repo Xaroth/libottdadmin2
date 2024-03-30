@@ -27,7 +27,7 @@ class OttdClientMixIn:
 
     def configure(
         self,
-        use_insecure_join: bool = True,
+        use_insecure_join: bool = False,
         password: Optional[str] = None,
         secret_key: Optional[str] = None,
         user_agent: Optional[str] = None,

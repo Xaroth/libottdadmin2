@@ -19,7 +19,7 @@ from libottdadmin2.util import loggable
 class OttdSocket(OttdClientMixIn, socket.socket):
     def __init__(
         self,
-        use_insecure_join: bool = True,
+        use_insecure_join: bool = False,
         password: Optional[str] = None,
         secret_key: Optional[str] = None,
         user_agent: Optional[str] = None,
