@@ -188,3 +188,9 @@ class Language(IntEnum):
     GREEK = 0x22
     LATVIAN = 0x23
     COUNT = 0x24
+
+
+class AuthenticationMethod(IntEnum):
+    X25519_PAKE = 0x01  # Authentication using x25519 password-authenticated key agreement.
+    X25519_AUTHORIZED_KEY = 0x02  # Authentication using x22519 key exchange and authorized keys.
+    _END = 0x03  # Sentinel for end.
