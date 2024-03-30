@@ -6,9 +6,11 @@
 
 from libottdadmin2.packets.base import Packet
 from libottdadmin2.packets.admin import (
+    AdminAuthResponse,
     AdminChat,
     AdminGamescript,
     AdminJoin,
+    AdminJoinSecure,
     AdminPing,
     AdminPoll,
     AdminQuit,
@@ -43,10 +45,12 @@ from libottdadmin2.packets.server import (
     ServerGamescript,
     ServerRconEnd,
     ServerPong,
+    ServerAuthRequest,
 )
 
 __all__ = [
     "Packet",
+    "ServerAuthRequest",
     "ServerBanned",
     "ServerChat",
     "ServerClientError",
@@ -74,9 +78,11 @@ __all__ = [
     "ServerRconEnd",
     "ServerShutdown",
     "ServerWelcome",
+    "AdminAuthResponse",
     "AdminChat",
     "AdminGamescript",
     "AdminJoin",
+    "AdminJoinSecure",
     "AdminPing",
     "AdminPoll",
     "AdminQuit",
