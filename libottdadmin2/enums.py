@@ -119,7 +119,10 @@ class ErrorCode(IntEnum):
     TIMEOUT_COMPUTER = 0x11
     TIMEOUT_MAP = 0x12
     TIMEOUT_JOIN = 0x13
-    _END = 0x14
+    INVALID_CLIENT_NAME = 0x14
+    NOT_ON_ALLOW_LIST = 0x15
+    NO_AUTHENTICATION_METHOD_AVAILABLE = 0x16
+    _END = 0x17
 
 
 class Colour(IntEnum):
