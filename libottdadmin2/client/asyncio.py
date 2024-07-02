@@ -19,7 +19,9 @@ class OttdAdminProtocol(OttdClientMixIn, asyncio.Protocol):
     def __init__(
         self,
         loop,
+        use_insecure_join: bool = False,
         password: Optional[str] = None,
+        secret_key: Optional[str] = None,
         user_agent: Optional[str] = None,
         version: Optional[str] = None,
         **kwargs
@@ -30,7 +32,11 @@ class OttdAdminProtocol(OttdClientMixIn, asyncio.Protocol):
         self.transport = None
         self.peername = None
 
-        self.configure(password=password, user_agent=user_agent, version=version)
+        self.configure(use_insecure_join=use_insecure_join,
+                       password=password,
+                       secret_key=secret_key,
+                       user_agent=user_agent,
+                       version=version)
 
     def _close(self):
         self.transport.close()
@@ -47,7 +53,7 @@ class OttdAdminProtocol(OttdClientMixIn, asyncio.Protocol):
         self._close()
 
     def send_packet(self, packet: Packet) -> None:
-        self.transport.write(packet.write_to_buffer())
+        self.transport.write(packet.write_to_buffer(self._encryption_handler))
 
     @classmethod
     async def connect(

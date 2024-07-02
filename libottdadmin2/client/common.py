@@ -7,30 +7,41 @@
 from asyncio import transports
 from typing import Tuple, Any, Optional
 
-from libottdadmin2.packets import AdminJoin, Packet, AdminQuit
+from libottdadmin2.client.crypto import CryptoHandler
+from libottdadmin2.packets import AdminAuthResponse, AdminJoin, AdminJoinSecure, AdminQuit, Packet
 from libottdadmin2.util import loggable, camel_to_snake
 
 
 @loggable
 class OttdClientMixIn:
     _buffer = None  # Type: bytes
+    _use_insecure_join = False # Type: bool
     _password = None  # Type: Optional[str]
     _user_agent = None  # Type: Optional[str]
     _version = None  # Type: Optional[str]
     transport = None  # Type: Optional[transports.Transport]
     peername = None  # Type: Tuple[str, int]
+    _decryption_handler = None # Type: IncrementalAuthenticatedEncryption
+    _encryption_handler = None # Type: IncrementalAuthenticatedEncryption
+    __crypto_handler = None # Type: CryptoHandler
 
     def configure(
         self,
+        use_insecure_join: bool = False,
         password: Optional[str] = None,
+        secret_key: Optional[str] = None,
         user_agent: Optional[str] = None,
         version: Optional[str] = None,
     ):
         from libottdadmin2 import VERSION
 
+        self._use_insecure_join = use_insecure_join
         self._password = password
         self._user_agent = user_agent or "libottdadmin2"
         self._version = version or VERSION
+
+        if not use_insecure_join and (password or secret_key):
+            self.__crypto_handler = CryptoHandler(password = password, secret_key = secret_key)
 
     def connection_made(self, transport: transports.Transport = None) -> None:
         if transport:
@@ -39,6 +50,14 @@ class OttdClientMixIn:
 
         self.log.info("Connection made to %s:%d", self.peername[0], self.peername[1])
 
+        if self._use_insecure_join:
+            self.insecure_join()
+        elif self.__crypto_handler != None:
+            self.secure_join()
+        else:
+            self.log.debug("No automatic authentication has been configured; provide your own!")
+
+    def insecure_join(self) -> None:
         if self._password:
             self.log.info(
                 "Automatically authenticating: %s@%s", self._user_agent, self._version
@@ -51,10 +70,24 @@ class OttdClientMixIn:
                 )
             )
 
+    def secure_join(self) -> None:
+        methods = self.__crypto_handler.get_available_methods()
+        if methods != 0:
+            self.log.info(
+                "Automatically authenticating: %s@%s", self._user_agent, self._version
+            )
+            self.send_packet(
+                AdminJoinSecure.create(
+                    name=self._user_agent,
+                    version=self._version,
+                    methods=methods,
+                )
+            )
+
     def data_received(self, data: bytes) -> None:
         self._buffer += data
         while True:
-            found, length, packet = Packet.extract(self._buffer)
+            found, length, packet = Packet.extract(self._buffer, self._decryption_handler)
             self._buffer = self._buffer[length:]
             if not found:
                 break
@@ -87,6 +120,27 @@ class OttdClientMixIn:
     def on_server_shutdown(self):
         self.log.debug("Server is shutting down")
         self.connection_closed()
+
+    def on_server_auth_request(self, method: int, public_key: bytes, key_exchange_nonce: bytes):
+        [mac, message] = self.__crypto_handler.on_auth_request(
+            method = method,
+            their_public_key = public_key,
+            key_exchange_nonce = key_exchange_nonce
+        )
+
+        self.send_packet(
+            AdminAuthResponse.create(
+                public_key = self.__crypto_handler.get_our_public_key(),
+                message = message,
+                mac = mac
+            )
+        )
+
+    def on_server_enable_encryption(self, encryption_nonce: bytes):
+        self.log.debug("Enabling encryption...")
+        self._encryption_handler = self.__crypto_handler.get_encryption_handler(encryption_nonce)
+        self._decryption_handler = self.__crypto_handler.get_decryption_handler(encryption_nonce)
+        self.__crypto_handler = None
 
 
 __all__ = [

@@ -8,6 +8,7 @@ from collections import namedtuple
 from datetime import datetime
 from typing import Tuple, Dict
 
+from libottdadmin2.client.crypto import NONCE_SIZE, PUBLIC_KEY_SIZE
 from libottdadmin2.constants import (
     NETWORK_NAME_LENGTH,
     NETWORK_REVISION_LENGTH,
@@ -638,3 +639,44 @@ class ServerRconEnd(AdminRcon):
 @Packet.register
 class ServerPong(AdminPing):
     packet_id = 126
+
+
+@Packet.register
+class ServerAuthRequest(Packet):
+    packet_id = 128
+    fields = ["method", "public_key", "key_exchange_nonce"]
+
+    def encode(self, method: int, public_key: bytes, key_exchange_nonce: bytes):
+        if len(public_key) != PUBLIC_KEY_SIZE:
+            raise ValueError(f'Invalid public_key length {len(public_key)} != {PUBLIC_KEY_SIZE}')
+        if len(key_exchange_nonce) != NONCE_SIZE:
+            raise ValueError(f'Invalid key_exchange_nonce length {len(key_exchange_nonce)} != {NONCE_SIZE}')
+
+        self.write_byte(method)
+        for b in public_key:
+            self.write_byte(b)
+        for b in key_exchange_nonce:
+            self.write_byte(b)
+
+    def decode(self) -> Tuple[int, bytes, bytes]:
+        method, = self.read_byte()
+        public_key = bytes(self.read_byte(PUBLIC_KEY_SIZE))
+        key_exchange_nonce = bytes(self.read_byte(NONCE_SIZE))
+        return self.data(method, public_key, key_exchange_nonce)
+
+
+@Packet.register
+class ServerEnableEncryption(Packet):
+    packet_id = 129
+    fields = ["encryption_nonce"]
+
+    def encode(self, encryption_nonce: bytes):
+        if len(encryption_nonce) != NONCE_SIZE:
+            raise ValueError(f'Invalid encryption_nonce length {len(encryption_nonce)} != {NONCE_SIZE}')
+
+        for b in encryption_nonce:
+            self.write_byte(b)
+
+    def decode(self) -> bytes:
+        encryption_nonce = bytes(self.read_byte(NONCE_SIZE))
+        return self.data(encryption_nonce)

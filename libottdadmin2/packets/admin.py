@@ -164,3 +164,52 @@ class AdminExternalChat(Packet):
         (colour,) = self.read_uint()
         user, message = self.read_str(2)
         return self.data(source, Colour(colour), user, message)
+
+
+@Packet.register
+class AdminJoinSecure(Packet):
+    packet_id = 9
+    fields = ["name", "version", "methods"]
+
+    def encode(self, name: str, version: str, methods: int):
+        self.write_str(
+            check_length(name, NETWORK_CLIENT_NAME_LENGTH, "'name'"),
+            check_length(version, NETWORK_REVISION_LENGTH, "'version'"),
+        )
+        self.write_ushort(methods)
+
+    def decode(self) -> Tuple[str, str, int]:
+        name, version = self.read_str(2)
+        methods, = self.read_ushort()
+        return self.data(
+            check_length(name, NETWORK_CLIENT_NAME_LENGTH, "'name'"),
+            check_length(version, NETWORK_REVISION_LENGTH, "'version'"),
+            methods
+        )
+
+
+@Packet.register
+class AdminAuthResponse(Packet):
+    packet_id = 10
+    fields = ["public_key", "message", "mac"]
+
+    def encode(self, public_key: bytes, mac: bytes, message: bytes):
+        if len(public_key) != 32:
+            raise ValueError(f'Invalid public_key length {len(public_key)} != 32')
+        if len(mac) != 16:
+            raise ValueError(f'Invalid mac length {len(mac)} != 16')
+        if len(message) != 8:
+            raise ValueError(f'Invalid message length {len(message)} != 8')
+
+        for b in public_key:
+            self.write_byte(b)
+        for b in mac:
+            self.write_byte(b)
+        for b in message:
+            self.write_byte(b)
+
+    def decode(self) -> Tuple[bytes, bytes, bytes]:
+        public_key = bytes(self.read_byte(32))
+        mac = bytes(self.read_byte(16))
+        message = bytes(self.read_byte(8))
+        return self.data(public_key, message, mac)

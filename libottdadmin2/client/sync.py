@@ -19,7 +19,9 @@ from libottdadmin2.util import loggable
 class OttdSocket(OttdClientMixIn, socket.socket):
     def __init__(
         self,
+        use_insecure_join: bool = False,
         password: Optional[str] = None,
+        secret_key: Optional[str] = None,
         user_agent: Optional[str] = None,
         version: Optional[str] = None,
     ):
@@ -29,7 +31,11 @@ class OttdSocket(OttdClientMixIn, socket.socket):
         self._last_error = None
         self._buffer = b""
         self._selector = None  # Type: Optional[_BaseSelectorImpl]
-        self.configure(password=password, user_agent=user_agent, version=version)
+        self.configure(use_insecure_join=use_insecure_join,
+                       password=password,
+                       secret_key=secret_key,
+                       user_agent=user_agent,
+                       version=version)
 
     def connect(self, address: Union[tuple, str, bytes]) -> bool:
         try:
@@ -62,7 +68,7 @@ class OttdSocket(OttdClientMixIn, socket.socket):
 
     def send_packet(self, packet: Packet):
         try:
-            self.sendall(packet.write_to_buffer())
+            self.sendall(packet.write_to_buffer(self._encryption_handler))
         except socket.error as e:
             self._last_error = e
             self.connection_lost(e)
